@@ -39,7 +39,8 @@
 - [ ] 6.4 Descargar `pr-watch.exe` del release y comprobar que sus propiedades declaran la versión publicada y que arranca en la bandeja
   - Propiedades verificadas sobre el `.exe` descargado de `v0.1.0`: `FileVersion` y `ProductVersion` dicen `0.1.0`. Falta el arranque en la bandeja, que es una comprobación en el escritorio del usuario.
 - [ ] 6.5 Descargar `pr-watch` del release, darle permiso de ejecución en un Linux con las bibliotecas documentadas y comprobar que arranca en la bandeja
-  - **No arranca**, por un defecto de `build.py` anterior a este cambio: el binario no lleva los submódulos de `gi.overrides`, que se cargan dinámicamente y el análisis estático de PyInstaller no ve, así que `GObject.idle_add` no existe y `pystray` falla al crear el icono. El aviso de bibliotecas del sistema faltantes sí funciona. Arreglarlo toca `build.py`, que este cambio declara fuera de alcance.
+  - El binario de `v0.1.0` **no arrancaba**, por un defecto de `build.py` anterior a este cambio: no llevaba los submódulos de `gi.overrides`, que se cargan dinámicamente y el análisis estático de PyInstaller no ve, así que `GObject.idle_add` no existía y `pystray` fallaba al crear el icono. Con el arreglo (`--collect-submodules gi.overrides`), el binario arranca, crea el icono y sigue vivo. Verificado en `ubuntu:24.04` con las bibliotecas documentadas, `xvfb` y bus de sesión.
+  - Queda abierto, **ajeno a este cambio**: en Linux el panel repite `WebKitJavascriptError: SyntaxError: Unexpected EOF`. No es empaquetado —los archivos de `pr_watch/ui` dentro del binario son idénticos a los de la fuente— y la aplicación sigue funcionando. Merece un change propio.
 
 ## 7. Documentación
 

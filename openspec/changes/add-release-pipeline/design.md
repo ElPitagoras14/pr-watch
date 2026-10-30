@@ -26,7 +26,7 @@ Decisiones ya tomadas con el usuario: disparo automático en push a la rama por 
 - Publicar en PyPI, winget, Homebrew, Flatpak o cualquier repositorio de paquetes.
 - Construir para macOS o para ARM.
 - Actualizaciones automáticas dentro de la aplicación.
-- Cambiar cómo se construye el ejecutable, o qué contiene.
+- Cambiar cómo se construye el ejecutable, o qué contiene. **Excepción acordada durante la implementación**: el primer binario de Linux que produjo el pipeline no arrancaba por un defecto de `build.py` —faltaban los submódulos de `gi.overrides`—, y el usuario decidió arreglarlo aquí en lugar de publicar un binario roto.
 - Releases de prueba, canales *beta* o prereleases.
 
 ## Decisions

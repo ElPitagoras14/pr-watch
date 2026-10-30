@@ -106,7 +106,10 @@ def main() -> int:
     else:
         # GTK, WebKit2GTK y AppIndicator se toman del sistema (D17): llevarlos
         # dentro haria el binario enorme y fragil entre distribuciones.
-        args += ["--hidden-import", "gi"]
+        # Los submodulos de gi.overrides se cargan dinamicamente, asi que el
+        # analisis estatico no los ve; sin ellos falta GObject.idle_add y
+        # pystray revienta al crear el icono.
+        args += ["--hidden-import", "gi", "--collect-submodules", "gi.overrides"]
 
     print(f"Construyendo {NAME} {ver} para {sys.platform}…")
     try:
