@@ -17,10 +17,14 @@ def main() -> int:
     log.setup(config_dir, level=logging.DEBUG if os.environ.get("PR_WATCH_DEBUG") else logging.INFO)
     _log.info("pr-watch %s arrancando", __version__)
 
-    missing = platform_check.missing_libraries()
-    if missing:
-        platform_check.report(missing)
+    problem = platform_check.check()
+    if problem:
+        print(problem, file=sys.stderr)
         return 1
+    if "--check-system" in sys.argv[1:]:
+        # Diagnostico (y prueba de arranque del pipeline): sin instancia unica ni bandeja.
+        print("pr-watch: las bibliotecas del sistema estan completas")
+        return 0
 
     guard = Guard(config_dir)
     result = guard.acquire()
