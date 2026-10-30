@@ -1,0 +1,36 @@
+# Finales de linea: LF en el repositorio y tambien en el directorio de trabajo.
+#
+# `eol=lf` anula el `core.autocrlf` de cada maquina, de modo que el proyecto se
+# comporta igual en Windows y en Linux sin depender de como tenga configurado
+# Git quien lo clone.
+* text=auto eol=lf
+
+# Codigo y configuracion.
+*.py      text eol=lf
+*.toml    text eol=lf
+*.md      text eol=lf
+*.json    text eol=lf
+*.yaml    text eol=lf
+*.yml     text eol=lf
+*.html    text eol=lf
+*.css     text eol=lf
+*.js      text eol=lf
+
+# Scripts de shell. Un hook con CRLF no se ejecuta en Linux: el interprete
+# recibe "#!/bin/sh\r" y busca un binario que no existe.
+*.sh      text eol=lf
+.githooks/** text eol=lf
+
+# Scripts de Windows, que si necesitan CRLF.
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+*.ps1     text eol=crlf
+
+# Binarios: que Git no intente normalizarlos ni mostrar diffs de texto.
+*.png     binary
+*.ico     binary
+*.exe     binary
+*.ttf     binary
+
+# Generado por uv: se versiona, pero su diff no aporta nada a una revision.
+uv.lock linguist-generated=true

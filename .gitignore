@@ -1,0 +1,8 @@
+.superpowers/
+__pycache__/
+*.pyc
+.venv/
+build/
+dist/
+.env
+.codegraph/

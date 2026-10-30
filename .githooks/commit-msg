@@ -1,0 +1,18 @@
+#!/bin/sh
+# Elimina del mensaje de commit los trailers de coautoria automatica.
+#
+# La convencion del repo (CLAUDE.md) es que ningun agente firme como coautor.
+# El hook lo garantiza aunque la herramienta de turno agregue el trailer sola:
+# en vez de rechazar el commit, limpia el mensaje y lo deja pasar.
+#
+# Solo toca las lineas Co-Authored-By de agentes conocidos; un coautor humano
+# real se conserva tal cual.
+
+mensaje="$1"
+
+limpio=$(
+  grep -v -i -E '^co-authored-by:.*(claude|anthropic|copilot|cursor|codex|chatgpt|openai|gemini|\[bot\])' "$mensaje" |
+    awk '{ lineas[NR] = $0 } NF { ultima = NR } END { for (i = 1; i <= ultima; i++) print lineas[i] }'
+)
+
+printf '%s\n' "$limpio" > "$mensaje"
