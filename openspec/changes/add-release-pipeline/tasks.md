@@ -23,7 +23,7 @@
 
 - [x] 4.1 Implementar `build-windows` en `windows-latest`, dependiente de `verify`: sincronizar, `uv run build.py`, comprobar que existe `dist/pr-watch.exe` y subirlo como artefacto de la ejecución
 - [x] 4.2 Implementar `build-linux` en `ubuntu-24.04`, dependiente de `verify`: instalar los paquetes `apt` confirmados en la tarea 1, sincronizar, correr las pruebas, `uv run build.py`, comprobar que existe `dist/pr-watch` y subirlo como artefacto
-- [ ] 4.3 Comprobar en una ejecución real que los dos jobs corren en paralelo y que los dos artefactos quedan disponibles para los jobs siguientes
+- [x] 4.3 Comprobar en una ejecución real que los dos jobs corren en paralelo y que los dos artefactos quedan disponibles para los jobs siguientes
 
 ## 5. Etiquetado y publicación
 
@@ -34,10 +34,12 @@
 ## 6. Verificación de extremo a extremo
 
 - [ ] 6.1 Comprobar el camino de no publicación: un push a `main` que no cambia la versión termina en verde tras `check-version`, sin construir ni etiquetar
-- [ ] 6.2 Comprobar el camino de publicación con la versión `0.1.0`: el pipeline construye, etiqueta `v0.1.0` y publica el release con los dos binarios
-- [ ] 6.3 Comprobar la idempotencia: relanzar la ejecución ya publicada termina en verde sin tocar el tag ni crear un segundo release
+- [x] 6.2 Comprobar el camino de publicación con la versión `0.1.0`: el pipeline construye, etiqueta `v0.1.0` y publica el release con los dos binarios
+- [x] 6.3 Comprobar la idempotencia: relanzar la ejecución ya publicada termina en verde sin tocar el tag ni crear un segundo release
 - [ ] 6.4 Descargar `pr-watch.exe` del release y comprobar que sus propiedades declaran la versión publicada y que arranca en la bandeja
+  - Propiedades verificadas sobre el `.exe` descargado de `v0.1.0`: `FileVersion` y `ProductVersion` dicen `0.1.0`. Falta el arranque en la bandeja, que es una comprobación en el escritorio del usuario.
 - [ ] 6.5 Descargar `pr-watch` del release, darle permiso de ejecución en un Linux con las bibliotecas documentadas y comprobar que arranca en la bandeja
+  - **No arranca**, por un defecto de `build.py` anterior a este cambio: el binario no lleva los submódulos de `gi.overrides`, que se cargan dinámicamente y el análisis estático de PyInstaller no ve, así que `GObject.idle_add` no existe y `pystray` falla al crear el icono. El aviso de bibliotecas del sistema faltantes sí funciona. Arreglarlo toca `build.py`, que este cambio declara fuera de alcance.
 
 ## 7. Documentación
 
