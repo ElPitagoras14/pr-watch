@@ -13,6 +13,60 @@ from PIL import Image
 from pr_watch import icon as icon_mod
 from pr_watch import theme
 
+if sys.platform == "win32":
+    import ctypes
+    from ctypes import wintypes
+
+    from pystray._util import win32
+
+    # pystray no publica tipos: para el comprobador la base es `object` y todos
+    # sus atributos internos serian errores. Declararla `Any` lo evita sin
+    # apagar la comprobacion del resto del modulo.
+    _PystrayIcon: Any = pystray.Icon
+
+    class WindowsIcon(_PystrayIcon):
+        """pystray abre el menu sobre una ventana distinta de la que pone delante.
+
+        `Icon._run` crea dos ventanas, `_hwnd` y `_menu_hwnd`. Antes de abrir el
+        menu, pystray llama a `SetForegroundWindow(_hwnd)` pero pasa
+        `_menu_hwnd` como duena del menu (`_win32.py:206` y `:221`). Windows
+        exige que la duena del menu sea la ventana de primer plano: si no lo es,
+        el menu se dibuja pero no sigue al raton ni acepta clics, y
+        `TrackPopupMenuEx` devuelve 0 sin invocar nada.
+
+        Con pystray solo en el hilo principal el descuido no se nota. Aqui, con
+        el bucle de mensajes de WinForms que levanta pywebview en el hilo
+        principal y la bandeja en otro, el menu queda muerto: ni «Abrir
+        pr-watch» ni «Salir» hacian nada.
+        """
+
+        def _on_notify(self, wparam: int, lparam: int) -> None:
+            if lparam != win32.WM_RBUTTONUP or not self._menu_handle:
+                super()._on_notify(wparam, lparam)
+                return
+
+            win32.SetForegroundWindow(self._menu_hwnd)
+            point = wintypes.POINT()
+            win32.GetCursorPos(ctypes.byref(point))
+            hmenu, descriptors = self._menu_handle
+            index = win32.TrackPopupMenuEx(
+                hmenu,
+                win32.TPM_RIGHTALIGN | win32.TPM_BOTTOMALIGN | win32.TPM_RETURNCMD,
+                point.x,
+                point.y,
+                self._menu_hwnd,
+                None,
+            )
+            # KB135788: sin este mensaje el menu puede quedarse abierto cuando se
+            # descarta haciendo clic fuera.
+            win32.PostMessage(self._menu_hwnd, 0x0000, 0, 0)  # WM_NULL
+            if index > 0:
+                descriptors[index - 1](self)
+
+    Icon: Any = WindowsIcon
+else:
+    Icon = pystray.Icon
+
 
 class Tray:
     def __init__(
@@ -30,7 +84,7 @@ class Tray:
         assert image is not None
         self._title = "pr-watch"
         self._lock = threading.Lock()
-        self.icon: Any = pystray.Icon(
+        self.icon: Any = Icon(
             "pr-watch",
             image,
             self._title,

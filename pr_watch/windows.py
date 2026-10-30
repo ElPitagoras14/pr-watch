@@ -108,7 +108,7 @@ class NativeWindow:
         screen, work, scale = mon
         size = (round(logical_size[0] * scale), round(logical_size[1] * scale))
         if near == "tray":
-            x, y = placement.place(size, screen, work, anchor)
+            x, y = placement.place(size, screen, work)
         else:
             cx, cy = work.center()
             x, y = cx - size[0] // 2, cy - size[1] // 2

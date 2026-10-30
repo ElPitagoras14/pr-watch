@@ -24,7 +24,7 @@ Vigila los pull requests que te involucran y los deja visibles en la bandeja del
 └──────────────────────────────────────────┘
 ```
 
-Un panel que sale junto al icono de bandeja, con la estética del de [usage-monitor-for-claude](https://github.com/jens-duttke/usage-monitor-for-claude). Arriba lo tuyo, abajo lo que esperan de ti. Cada PR ocupa dos líneas: título y estado arriba; repositorio, checks y conversaciones sin resolver (o autor y antigüedad, si es para revisar) debajo.
+Un panel que sale en la esquina de la pantalla junto a la bandeja, con la estética del de [usage-monitor-for-claude](https://github.com/jens-duttke/usage-monitor-for-claude). Arriba lo tuyo, abajo lo que esperan de ti. Cada PR ocupa dos líneas: título y estado arriba; repositorio, checks y conversaciones sin resolver (o autor y antigüedad, si es para revisar) debajo.
 
 El icono de bandeja es el glifo de un pull request, claro u oscuro según tu barra de tareas. Le aparece un **punto azul** cuando ha pasado algo desde la última vez que abriste el panel, y desaparece al abrirlo.
 

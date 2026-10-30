@@ -1,8 +1,10 @@
-"""Donde aparece el panel: pegado al icono de bandeja, dentro del area de trabajo.
+"""Donde aparece el panel: en la esquina del area de trabajo junto a la bandeja.
 
 La geometria (`place`) es pura y se prueba sola. Las consultas al sistema
 (posicion del icono, monitor, DPI) estan aisladas abajo, porque dependen de
-atributos internos de pystray y de la API de Windows (D9).
+atributos internos de pystray y de la API de Windows (D9). El rectangulo del
+icono ya no decide la posicion del panel: solo sirve para saber en que monitor
+dibujarlo.
 """
 
 from __future__ import annotations
@@ -50,8 +52,14 @@ def _clamp(v: int, lo: int, hi: int) -> int:
     return max(lo, min(v, hi))
 
 
-def place(size: tuple[int, int], screen: Rect, work: Rect, anchor: Rect | None) -> tuple[int, int]:
-    """Esquina superior izquierda del panel, en pixeles fisicos."""
+def place(size: tuple[int, int], screen: Rect, work: Rect) -> tuple[int, int]:
+    """Esquina superior izquierda del panel, en pixeles fisicos.
+
+    Siempre la esquina del area de trabajo donde vive la bandeja: con la barra
+    abajo o arriba, la derecha; con la barra en un lateral, la de abajo. Antes
+    el panel se centraba sobre el icono, pero el icono rara vez es el ultimo de
+    la bandeja y el panel quedaba flotando a media distancia de la esquina.
+    """
     w, h = size
     edge = taskbar_edge(screen, work)
     max_x = work.right - w - MARGIN
@@ -59,23 +67,8 @@ def place(size: tuple[int, int], screen: Rect, work: Rect, anchor: Rect | None) 
     min_x = work.left + MARGIN
     min_y = work.top + MARGIN
 
-    if anchor is None:
-        # Sin icono conocido: la esquina del area de trabajo junto a la barra,
-        # que en el caso habitual (abajo o arriba) es la derecha.
-        x = min_x if edge == "left" else max_x
-        y = min_y if edge == "top" else max_y
-        return _clamp(x, min_x, max(min_x, max_x)), _clamp(y, min_y, max(min_y, max_y))
-
-    ax, ay = anchor.center()
-    match edge:
-        case "top":
-            x, y = ax - w // 2, min_y
-        case "left":
-            x, y = min_x, ay - h // 2
-        case "right":
-            x, y = max_x, ay - h // 2
-        case _:
-            x, y = ax - w // 2, max_y
+    x = min_x if edge == "left" else max_x
+    y = min_y if edge == "top" else max_y
     return _clamp(x, min_x, max(min_x, max_x)), _clamp(y, min_y, max(min_y, max_y))
 
 
