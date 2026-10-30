@@ -1,0 +1,2 @@
+{"data": {"nodes": [{"id": "PR_1", "state": "MERGED"}, {"id": "PR_2", "state": "CLOSED"}, null]},
+ "errors": [{"type": "NOT_FOUND", "path": ["nodes", 2], "message": "Could not resolve to a node with the global id of 'PR_3'"}]}

@@ -1,0 +1,2 @@
+{"data": {"viewer": {"login": "miusuario"}, "organization": null},
+ "errors": [{"type": "NOT_FOUND", "path": ["organization"], "message": "Could not resolve to an Organization with the login of 'nada'."}]}

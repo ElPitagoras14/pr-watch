@@ -1,0 +1,3 @@
+{"data": {"viewer": {"login": "miusuario", "organizations": {
+  "pageInfo": {"hasNextPage": false, "endCursor": "O2"},
+  "nodes": [{"login": "beta-labs"}]}}}}

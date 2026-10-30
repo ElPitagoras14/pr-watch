@@ -1,0 +1,37 @@
+{"data": {
+  "author": {"issueCount": 2, "pageInfo": {"hasNextPage": false, "endCursor": "A1"}, "nodes": [
+    {"id": "PR_142", "number": 142, "title": "Fix ruta estatica", "url": "https://github.com/contoso/netops/pull/142",
+     "isDraft": false, "state": "OPEN", "updatedAt": "2026-10-29T10:00:00Z",
+     "repository": {"nameWithOwner": "contoso/netops"}, "author": {"login": "miusuario"},
+     "mergeable": "MERGEABLE", "reviewDecision": "APPROVED",
+     "latestOpinionatedReviews": {"nodes": [
+       {"state": "APPROVED", "author": {"login": "bea"}},
+       {"state": "APPROVED", "author": {"login": "Ana"}}]},
+     "commits": {"nodes": [{"commit": {"statusCheckRollup": {"state": "SUCCESS"}}}]},
+     "reviewThreads": {"nodes": [{"isResolved": true}]}},
+    {"id": "PR_131", "number": 131, "title": "Logs de auditoria", "url": "https://github.com/contoso/audit/pull/131",
+     "isDraft": false, "state": "OPEN", "updatedAt": "2026-10-28T09:00:00Z",
+     "repository": {"nameWithOwner": "contoso/audit"}, "author": {"login": "miusuario"},
+     "mergeable": "CONFLICTING", "reviewDecision": "CHANGES_REQUESTED",
+     "latestOpinionatedReviews": {"nodes": [{"state": "CHANGES_REQUESTED", "author": {"login": "carlos"}}]},
+     "commits": {"nodes": [{"commit": {"statusCheckRollup": {"state": "FAILURE"}}}]},
+     "reviewThreads": {"nodes": [{"isResolved": false}, {"isResolved": false}, {"isResolved": true}]}}
+  ]},
+  "reviewer": {"issueCount": 2, "pageInfo": {"hasNextPage": true, "endCursor": "R1"}, "nodes": [
+    {"id": "PR_150", "number": 150, "title": "Utilidades de red", "url": "https://github.com/contoso/drivers/pull/150",
+     "isDraft": false, "state": "OPEN", "updatedAt": "2026-10-29T08:00:00Z",
+     "repository": {"nameWithOwner": "contoso/drivers"}, "author": {"login": "colega"},
+     "mergeable": "UNKNOWN", "reviewDecision": "REVIEW_REQUIRED",
+     "latestOpinionatedReviews": {"nodes": []},
+     "commits": {"nodes": [{"commit": {"statusCheckRollup": null}}]},
+     "reviewThreads": {"nodes": []}}
+  ]},
+  "assignee": {"issueCount": 1, "pageInfo": {"hasNextPage": false, "endCursor": "S1"}, "nodes": [
+    {"id": "PR_142", "number": 142, "title": "Fix ruta estatica", "url": "https://github.com/contoso/netops/pull/142",
+     "isDraft": false, "state": "OPEN", "updatedAt": "2026-10-29T10:00:00Z",
+     "repository": {"nameWithOwner": "contoso/netops"}, "author": {"login": "miusuario"},
+     "mergeable": "MERGEABLE", "reviewDecision": "APPROVED",
+     "latestOpinionatedReviews": {"nodes": []},
+     "commits": {"nodes": []}, "reviewThreads": {"nodes": []}}
+  ]}
+}}

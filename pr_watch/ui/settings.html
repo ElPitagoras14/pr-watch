@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR Watch · Ajustes</title>
+    <link rel="stylesheet" href="panel.css" />
+    <link rel="stylesheet" href="icons.css" />
+    <link rel="stylesheet" href="settings.css" />
+  </head>
+  <body>
+    <div class="panel" id="panel">
+      <div class="hd pywebview-drag-region" id="drag">
+        <h1 class="pywebview-drag-region">Ajustes</h1>
+        <div class="actions">
+          <button id="btn-close" title="Cerrar sin guardar">
+            <i class="ic"><span class="g">&#xE711;</span>
+              <svg viewBox="0 0 16 16"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" /></svg></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="sec"><span>CONEXIÓN</span></div>
+      <div class="kv"><span class="k">Proveedor</span><span class="v" id="provider"></span></div>
+      <label class="field">
+        <span class="k">Token</span>
+        <input id="token" type="password" autocomplete="off" spellcheck="false" />
+      </label>
+      <p class="help">
+        Un <em>fine-grained token</em> con tu cuenta o la organización como dueña y solo
+        permisos de lectura: <span id="perms"></span>.
+        <a id="create-token">Crear token en GitHub</a>
+      </p>
+      <div id="plaintext"></div>
+      <div class="line">
+        <button id="btn-verify" class="btn">Verificar token</button>
+        <span id="verify-status" class="status"></span>
+      </div>
+      <label class="field">
+        <span class="k" id="scope-label">Organización</span>
+        <select id="scope-select" disabled></select>
+        <input id="scope-manual" type="text" autocomplete="off" spellcheck="false"
+               placeholder="Nombre de la organización" hidden />
+      </label>
+      <div class="line"><span id="scope-status" class="status"></span></div>
+      <div class="line" id="logout-line">
+        <a id="btn-logout">Cerrar sesión</a>
+      </div>
+
+      <hr />
+      <div class="sec"><span>SONDEO</span></div>
+      <label class="field inline">
+        <span class="k">Segundos entre consultas</span>
+        <input id="interval" type="number" step="1" />
+      </label>
+      <label class="field inline">
+        <span class="k">Máximo de PR por bloque</span>
+        <input id="per-block" type="number" step="1" />
+      </label>
+      <label class="field inline check">
+        <span class="k">Notificaciones del sistema</span>
+        <input id="notifications" type="checkbox" />
+      </label>
+      <div id="notes" class="notes"></div>
+      <p class="help"><a id="open-config">Abrir config.toml</a> para el resto de ajustes.</p>
+
+      <hr />
+      <div class="line end">
+        <span id="save-status" class="status"></span>
+        <button id="btn-cancel" class="btn">Cancelar</button>
+        <button id="btn-save" class="btn primary">Guardar</button>
+      </div>
+    </div>
+    <script src="common.js"></script>
+    <script src="settings.js"></script>
+  </body>
+</html>

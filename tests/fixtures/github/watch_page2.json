@@ -1,0 +1,11 @@
+{"data": {
+  "reviewer": {"issueCount": 2, "pageInfo": {"hasNextPage": false, "endCursor": "R2"}, "nodes": [
+    {"id": "PR_160", "number": 160, "title": "Refactor de rutas", "url": "https://github.com/contoso/netops/pull/160",
+     "isDraft": true, "state": "OPEN", "updatedAt": "2026-10-27T08:00:00Z",
+     "repository": {"nameWithOwner": "contoso/netops"}, "author": {"login": "otro"},
+     "mergeable": "MERGEABLE", "reviewDecision": null,
+     "latestOpinionatedReviews": {"nodes": []},
+     "commits": {"nodes": [{"commit": {"statusCheckRollup": {"state": "PENDING"}}}]},
+     "reviewThreads": {"nodes": []}}
+  ]}
+}}

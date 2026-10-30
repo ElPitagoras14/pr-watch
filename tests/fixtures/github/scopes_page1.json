@@ -1,0 +1,3 @@
+{"data": {"viewer": {"login": "miusuario", "organizations": {
+  "pageInfo": {"hasNextPage": true, "endCursor": "O1"},
+  "nodes": [{"login": "contoso"}, {"login": "Acme"}]}}}}

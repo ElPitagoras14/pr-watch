@@ -1,0 +1,31 @@
+/*
+ * Iconos de accion: los glifos de Segoe Fluent Icons / Segoe MDL2 Assets que
+ * usa mr-watch (E72C recargar, E713 ajustes, E718 fijar, E711 cerrar). Donde
+ * esas fuentes no existen (Linux), `html.no-segoe` cambia a SVG equivalentes.
+ */
+
+.ic {
+  font-family: "Segoe Fluent Icons", "Segoe MDL2 Assets";
+  font-size: 13px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.ic svg {
+  display: none;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+html.no-segoe .ic .g {
+  display: none;
+}
+
+html.no-segoe .ic svg {
+  display: block;
+}

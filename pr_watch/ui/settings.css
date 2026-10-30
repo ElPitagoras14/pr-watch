@@ -1,0 +1,140 @@
+/* Ajustes: el mismo lenguaje del panel mas controles de formulario. */
+
+body {
+  user-select: auto;
+  -webkit-user-select: auto;
+}
+
+.hd {
+  cursor: default;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.field.inline {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.field .k {
+  color: var(--muted);
+}
+
+input[type="text"],
+input[type="password"],
+input[type="number"],
+select {
+  font: inherit;
+  color: var(--text);
+  background: var(--hover);
+  border: 1px solid var(--sep);
+  border-radius: 4px;
+  padding: 5px 8px;
+  outline: none;
+}
+
+input:focus {
+  border-color: var(--accent);
+}
+
+input[type="number"] {
+  width: 72px;
+  text-align: right;
+}
+
+input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+}
+
+.help {
+  color: var(--sub);
+  font-size: 12px;
+  margin: 6px 0;
+}
+
+a {
+  color: var(--link);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+}
+
+.line.end {
+  justify-content: flex-end;
+  margin-bottom: 0;
+}
+
+.line.end .status {
+  margin-right: auto;
+}
+
+.btn {
+  font: inherit;
+  color: var(--text);
+  background: var(--hover);
+  border: 1px solid var(--sep);
+  border-radius: 4px;
+  padding: 5px 14px;
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.status {
+  font-size: 12px;
+}
+
+.notes {
+  color: var(--amber);
+  font-size: 12px;
+}
+
+.warn {
+  border-left: 3px solid var(--amber);
+  background: var(--hover);
+  padding: 6px 10px;
+  font-size: 12px;
+  margin: 8px 0;
+}
+
+select:disabled,
+input:disabled {
+  opacity: 0.5;
+}
+
+select option {
+  background: var(--bg);
+  color: var(--text);
+}
+
+[hidden] {
+  display: none !important;
+}

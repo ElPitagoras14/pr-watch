@@ -1,0 +1,5 @@
+[
+ {"full_name": "miusuario/dotfiles", "owner": {"login": "miusuario", "type": "User"}},
+ {"full_name": "contoso/netops", "owner": {"login": "contoso", "type": "Organization"}},
+ {"full_name": "contoso/drivers", "owner": {"login": "contoso", "type": "Organization"}}
+]

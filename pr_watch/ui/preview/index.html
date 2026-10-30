@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>pr-watch · vista previa</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        font-size: 13px;
+        background: #1a1a1a;
+        color: #ddd;
+      }
+      body.light {
+        background: #d9d9d9;
+        color: #222;
+      }
+      header {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+      }
+      select,
+      button {
+        font: inherit;
+        padding: 4px 8px;
+      }
+      .stage {
+        display: flex;
+        gap: 24px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+      iframe {
+        border: 0;
+        background: transparent;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+      }
+      .hint {
+        opacity: 0.7;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <strong>pr-watch · vista previa</strong>
+      <label>Escenario <select id="scenario"></select></label>
+      <button id="theme">Tema: oscuro</button>
+      <button id="reload">Recargar</button>
+      <span class="hint">Las acciones se registran en la consola del navegador.</span>
+    </header>
+    <div class="stage">
+      <iframe id="frame" width="340" height="560" title="panel"></iframe>
+    </div>
+    <script>
+      "use strict";
+      const sel = document.getElementById("scenario");
+      const frame = document.getElementById("frame");
+      const themeBtn = document.getElementById("theme");
+      let theme = localStorage.getItem("prw-theme") || "dark";
+
+      function load() {
+        const name = sel.value;
+        const page = name.startsWith("ajustes") ? "settings.html" : "panel.html";
+        frame.width = page === "settings.html" ? 400 : 340;
+        frame.src = "../" + page + "?preview=" + encodeURIComponent(name) + "&theme=" + theme;
+        themeBtn.textContent = "Tema: " + (theme === "dark" ? "oscuro" : "claro");
+        document.body.classList.toggle("light", theme === "light");
+        try { localStorage.setItem("prw-scenario", name); localStorage.setItem("prw-theme", theme); } catch (e) {}
+      }
+
+      // El panel informa su alto como lo haria a la ventana real.
+      window.addEventListener("message", (e) => {
+        if (e.data && e.data.type === "content_height") frame.height = e.data.value;
+      });
+
+      fetch("scenarios.json", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((all) => {
+          for (const name of Object.keys(all)) sel.append(new Option(name, name));
+          const saved = localStorage.getItem("prw-scenario");
+          if (saved && all[saved]) sel.value = saved;
+          load();
+        });
+      sel.addEventListener("change", load);
+      document.getElementById("reload").addEventListener("click", load);
+      themeBtn.addEventListener("click", () => {
+        theme = theme === "dark" ? "light" : "dark";
+        load();
+      });
+    </script>
+  </body>
+</html>
