@@ -10,16 +10,17 @@ como variable, nunca concatenada.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any, Protocol, cast
+from typing import Any, cast
 from urllib.parse import quote
 
 from pr_watch.credential import Token
 from pr_watch.providers.base import (
     INACCESSIBLE,
     ChecksState,
+    Descriptor,
     FetchResult,
     Identity,
     Inaccessible,
@@ -34,6 +35,7 @@ from pr_watch.providers.base import (
     ScopeList,
     Vocabulary,
 )
+from pr_watch.providers.http import Response, Transport, assert_read_only, requests_transport
 
 API_URL = "https://api.github.com/graphql"
 REPOS_URL = "https://api.github.com/user/repos"
@@ -47,9 +49,6 @@ CREATE_TOKEN_URL = "https://github.com/settings/personal-access-tokens/new"
 TOKEN_PERMISSIONS = ("Pull requests", "Metadata", "Commit statuses", "Checks")
 
 _ORG_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$")
-_FORBIDDEN_OP = re.compile(r"\b(mutation|subscription)\b")
-_STRINGS = re.compile(r'"""[\s\S]*?"""|"(?:\\.|[^"\\])*"')
-_COMMENTS = re.compile(r"#[^\n]*")
 
 _PR_FIELDS = """
 fragment PR on PullRequest {
@@ -125,52 +124,11 @@ _RELATIONS: dict[str, tuple[Relation, str, str, str, str]] = {
 }
 
 
-class Response(Protocol):
-    status_code: int
-    headers: Mapping[str, str]
-
-    def json(self) -> Any: ...
-
-
-# (url, cuerpo, cabeceras, timeout). Cuerpo None = GET de la API REST; con
-# cuerpo = POST de una consulta GraphQL. No hay otros verbos.
-type Transport = Callable[[str, dict[str, Any] | None, dict[str, str], float], Response]
-
-
-def requests_transport() -> Transport:
-    """Transporte real: una sesion de requests con las CA del sistema."""
-    import requests
-    import truststore
-
-    truststore.inject_into_ssl()
-    session = requests.Session()
-    session.headers["User-Agent"] = "pr-watch"
-
-    def send(
-        url: str, body: dict[str, Any] | None, headers: dict[str, str], timeout: float
-    ) -> Response:
-        try:
-            if body is None:
-                return cast(Response, session.get(url, headers=headers, timeout=timeout))
-            return cast(Response, session.post(url, json=body, headers=headers, timeout=timeout))
-        except requests.RequestException as e:
-            raise NetworkError(type(e).__name__) from None
-
-    return send
-
-
 def _headers(token: Token) -> dict[str, str]:
     return {
         "Authorization": f"Bearer {token.reveal()}",
         "Accept": "application/vnd.github+json",
     }
-
-
-def assert_read_only(document: str) -> None:
-    """Rechaza cualquier documento GraphQL que no sea una consulta."""
-    stripped = _COMMENTS.sub("", _STRINGS.sub('""', document))
-    if _FORBIDDEN_OP.search(stripped):
-        raise AssertionError("pr-watch es de solo lectura: documento GraphQL rechazado")
 
 
 def valid_org(org: str) -> bool:
@@ -206,7 +164,25 @@ class _Page:
 
 class GitHubProvider:
     name = "github"
+    DISPLAY_NAME = "GitHub"
     vocabulary = Vocabulary(noun="PR", ref_prefix="#", host_label="github.com")
+
+    @property
+    def instance_key(self) -> str:
+        # GitHub solo vive en github.com: la clave es la de siempre, para que
+        # el token y el estado ya guardados sigan donde estan.
+        return self.name
+
+    @property
+    def descriptor(self) -> Descriptor:
+        return Descriptor(
+            display_name=self.DISPLAY_NAME,
+            scope_label="Cuenta u organización",
+            scope_placeholder="Nombre de la organización",
+            token_permissions=TOKEN_PERMISSIONS,
+            create_token_url=CREATE_TOKEN_URL,
+            configurable_host=False,
+        )
 
     def __init__(self, transport: Transport | None = None) -> None:
         self._transport = transport

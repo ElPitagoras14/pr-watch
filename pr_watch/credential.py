@@ -1,8 +1,14 @@
 """Credencial del proveedor: keyring del sistema con respaldo a archivo.
 
-Orden de lectura: `PR_WATCH_TOKEN`, `.env` del directorio de trabajo, keyring y
-archivo de respaldo. `GITHUB_TOKEN` y `GH_TOKEN` se ignoran a proposito: suelen
-llevar permisos de escritura que esta herramienta no debe tener.
+Orden de lectura: variable de entorno, `.env` del directorio de trabajo,
+keyring y archivo de respaldo. `GITHUB_TOKEN` y `GH_TOKEN` se ignoran a
+proposito: suelen llevar permisos de escritura que esta herramienta no debe
+tener.
+
+Todo se guarda bajo la clave que declara el proveedor, que incluye la
+instancia cuando la forja vive en varias: dos instancias de GitLab no se
+pisan el token. Tambien la variable de desarrollo, que si fuera unica daria
+el token de una instancia a otra al conmutar.
 """
 
 from __future__ import annotations
@@ -10,6 +16,7 @@ from __future__ import annotations
 import enum
 import logging
 import os
+import re
 import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -22,6 +29,11 @@ SERVICE = "pr-watch"
 ENV_VAR = "PR_WATCH_TOKEN"
 
 _log = logging.getLogger(__name__)
+
+
+def env_var_for(key: str) -> str:
+    """`gitlab@gitlab-telconet-ec` -> `PR_WATCH_TOKEN_GITLAB_GITLAB_TELCONET_EC`."""
+    return f"{ENV_VAR}_{re.sub(r'[^A-Za-z0-9]+', '_', key).upper().strip('_')}"
 
 
 class Token:
@@ -95,14 +107,15 @@ def system_keyring() -> KeyringBackend | None:
 class CredentialStore:
     def __init__(
         self,
-        provider: str,
+        key: str,
         config_dir: Path,
         *,
         cwd: Path | None = None,
         environ: Mapping[str, str] | None = None,
         keyring_backend: KeyringBackend | None = None,
     ) -> None:
-        self.provider = provider
+        # La clave la declara el proveedor: `github`, `gitlab@<instancia>`.
+        self.key = key
         self.config_dir = config_dir
         self.cwd = cwd if cwd is not None else Path.cwd()
         self.environ = environ if environ is not None else os.environ
@@ -110,7 +123,12 @@ class CredentialStore:
 
     @property
     def fallback_file(self) -> Path:
-        return self.config_dir / f"token-{self.provider}"
+        return self.config_dir / f"token-{self.key}"
+
+    @property
+    def env_var(self) -> str:
+        """La variable propia de esta forja; la generica sigue valiendo."""
+        return env_var_for(self.key)
 
     def keyring_available(self) -> bool:
         return self.keyring is not None
@@ -118,9 +136,10 @@ class CredentialStore:
     # ---- lectura ----
 
     def load(self) -> Loaded | None:
-        value = self.environ.get(ENV_VAR, "").strip()
-        if value:
-            return Loaded(Token(value), Source.ENV)
+        for nombre in (self.env_var, ENV_VAR):
+            value = self.environ.get(nombre, "").strip()
+            if value:
+                return Loaded(Token(value), Source.ENV)
 
         value = self._from_dotenv()
         if value:
@@ -147,17 +166,19 @@ class CredentialStore:
             lines = path.read_text("utf-8").splitlines()
         except OSError:
             return ""
+        encontrado: dict[str, str] = {}
         for line in lines:
             key, sep, value = line.strip().partition("=")
-            if sep and key.strip().removeprefix("export ").strip() == ENV_VAR:
-                return value.strip().strip("'\"").strip()
-        return ""
+            nombre = key.strip().removeprefix("export ").strip()
+            if sep and nombre in (self.env_var, ENV_VAR):
+                encontrado[nombre] = value.strip().strip("'\"").strip()
+        return encontrado.get(self.env_var) or encontrado.get(ENV_VAR, "")
 
     def _from_keyring(self) -> str:
         if self.keyring is None:
             return ""
         try:
-            return (self.keyring.get_password(SERVICE, self.provider) or "").strip()
+            return (self.keyring.get_password(SERVICE, self.key) or "").strip()
         except Exception as e:
             _log.warning("No se pudo leer del almacen de credenciales: %s", type(e).__name__)
             return ""
@@ -185,7 +206,7 @@ class CredentialStore:
     def _to_keyring(self, token: Token) -> bool:
         assert self.keyring is not None
         try:
-            self.keyring.set_password(SERVICE, self.provider, token.reveal())
+            self.keyring.set_password(SERVICE, self.key, token.reveal())
             return True
         except Exception as e:
             _log.warning("No se pudo guardar en el almacen de credenciales: %s", type(e).__name__)
@@ -210,8 +231,8 @@ class CredentialStore:
         """Borra la credencial del keyring y del archivo. Nada que borrar no es error."""
         if self.keyring is not None:
             try:
-                if self.keyring.get_password(SERVICE, self.provider) is not None:
-                    self.keyring.delete_password(SERVICE, self.provider)
+                if self.keyring.get_password(SERVICE, self.key) is not None:
+                    self.keyring.delete_password(SERVICE, self.key)
             except Exception as e:
                 _log.warning("No se pudo borrar del almacen de credenciales: %s", type(e).__name__)
         self._delete_file()

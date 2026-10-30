@@ -23,6 +23,7 @@ from pr_watch.poller import Health, Snapshot
 from pr_watch.polling import State, Tracked
 from pr_watch.providers.base import ChecksState, PrState, PullRequest, Relation
 from pr_watch.providers.github import GitHubProvider
+from pr_watch.providers.gitlab import GitLabProvider
 
 UI_DIR = Path(__file__).parent / "ui"
 SCENARIOS_FILE = UI_DIR / "preview" / "scenarios.json"
@@ -179,7 +180,7 @@ def scenarios() -> dict[str, Any]:
     }
     out["ajustes-primera-vez"] = {
         "settings": settings_model.load(
-            unconfigured, has_token=False, plaintext=False, first_run=True
+            unconfigured, gh, has_token=False, plaintext=False, first_run=True
         ),
         "replies": {
             "settings_verify_token": orgs,
@@ -187,7 +188,7 @@ def scenarios() -> dict[str, Any]:
         },
     }
     out["ajustes-con-token"] = {
-        "settings": settings_model.load(cfg, has_token=True, plaintext=False, first_run=False),
+        "settings": settings_model.load(cfg, gh, has_token=True, plaintext=False, first_run=False),
         "replies": {
             "settings_verify_token": orgs,
             "settings_verify": {"ok": True, "login": "miusuario"},
@@ -195,7 +196,7 @@ def scenarios() -> dict[str, Any]:
     }
     out["ajustes-sin-organizaciones"] = {
         "settings": settings_model.load(
-            unconfigured, has_token=False, plaintext=False, first_run=True
+            unconfigured, gh, has_token=False, plaintext=False, first_run=True
         ),
         "replies": {
             "settings_verify_token": {
@@ -211,8 +212,67 @@ def scenarios() -> dict[str, Any]:
         },
     }
     out["ajustes-token-rechazado"] = {
-        "settings": settings_model.load(cfg, has_token=True, plaintext=True, first_run=False),
+        "settings": settings_model.load(cfg, gh, has_token=True, plaintext=True, first_run=False),
         "replies": {"settings_verify_token": {"ok": False, "kind": "invalid", "message": "401"}},
+    }
+
+    # Ajustes con la otra forja: la nube, una instancia propia y los dos
+    # fallos que solo existen con host configurable.
+    nube = GitLabProvider("https://gitlab.com")
+    propia = GitLabProvider("https://gitlab.empresa.com")
+    cfg_nube = Config(provider="gitlab")
+    cfg_propia = Config(provider="gitlab")
+    cfg_propia.gitlab.host = propia.host
+    cfg_propia.gitlab.group = "empresa/plataforma"
+    grupos = {
+        "ok": True,
+        "login": "miusuario",
+        "scopes": [
+            {"value": v, "label": propia.scope_label(v)}
+            for v in ("user:miusuario", "empresa", "empresa/plataforma", "empresa/plataforma/red")
+        ],
+    }
+    out["ajustes-gitlab-nube"] = {
+        "settings": settings_model.load(
+            cfg_nube, nube, has_token=False, plaintext=False, first_run=True
+        ),
+        "replies": {
+            "settings_verify_token": grupos,
+            "settings_verify": {"ok": True, "login": "miusuario"},
+        },
+    }
+    out["ajustes-gitlab-propia"] = {
+        "settings": settings_model.load(
+            cfg_propia, propia, has_token=True, plaintext=False, first_run=False
+        ),
+        "replies": {
+            "settings_verify_token": grupos,
+            "settings_verify": {"ok": True, "login": "miusuario"},
+        },
+    }
+    out["ajustes-gitlab-inalcanzable"] = {
+        "settings": settings_model.load(
+            cfg_propia, propia, has_token=False, plaintext=False, first_run=True
+        ),
+        "replies": {
+            "settings_verify_token": {
+                "ok": False,
+                "kind": "network",
+                "message": "gitlab.empresa.com no responde como una instancia de GitLab",
+            },
+        },
+    }
+    out["ajustes-gitlab-version-vieja"] = {
+        "settings": settings_model.load(
+            cfg_propia, propia, has_token=False, plaintext=False, first_run=True
+        ),
+        "replies": {
+            "settings_verify_token": {
+                "ok": False,
+                "kind": "scope",
+                "message": "esta instancia es GitLab 15.11.3 y hace falta 16.0 o posterior",
+            },
+        },
     }
     return out
 

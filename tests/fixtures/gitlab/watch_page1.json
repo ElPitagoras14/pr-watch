@@ -1,0 +1,226 @@
+{
+ "data": {
+  "queryComplexity": {
+   "score": 169,
+   "limit": 250
+  },
+  "currentUser": {
+   "username": "miusuario",
+   "autor": {
+    "pageInfo": {
+     "hasNextPage": true,
+     "endCursor": "A1"
+    },
+    "nodes": [
+     {
+      "id": "gid://gitlab/MergeRequest/101",
+      "iid": "101",
+      "title": "MR 101",
+      "webUrl": "https://gitlab.empresa.com/empresa/plataforma/-/merge_requests/101",
+      "state": "opened",
+      "draft": false,
+      "updatedAt": "2026-10-20T12:00:32-05:00",
+      "conflicts": false,
+      "mergeStatusEnum": "CAN_BE_MERGED",
+      "approved": true,
+      "resolvableDiscussionsCount": 3,
+      "resolvedDiscussionsCount": 1,
+      "project": {
+       "fullPath": "empresa/plataforma"
+      },
+      "author": {
+       "username": "miusuario"
+      },
+      "approvedBy": {
+       "nodes": [
+        {
+         "username": "bea"
+        },
+        {
+         "username": "ana"
+        }
+       ]
+      },
+      "reviewers": {
+       "nodes": []
+      },
+      "headPipeline": {
+       "status": "SUCCESS"
+      }
+     },
+     {
+      "id": "gid://gitlab/MergeRequest/102",
+      "iid": "102",
+      "title": "MR 102",
+      "webUrl": "https://gitlab.empresa.com/empresa/plataforma/-/merge_requests/102",
+      "state": "opened",
+      "draft": false,
+      "updatedAt": "2026-10-20T12:00:32-05:00",
+      "conflicts": false,
+      "mergeStatusEnum": "CAN_BE_MERGED",
+      "approved": false,
+      "resolvableDiscussionsCount": 0,
+      "resolvedDiscussionsCount": 0,
+      "project": {
+       "fullPath": "empresa/plataforma"
+      },
+      "author": {
+       "username": "miusuario"
+      },
+      "approvedBy": {
+       "nodes": []
+      },
+      "reviewers": {
+       "nodes": []
+      },
+      "headPipeline": null
+     }
+    ]
+   },
+   "asignado": {
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": null
+    },
+    "nodes": [
+     {
+      "id": "gid://gitlab/MergeRequest/102",
+      "iid": "102",
+      "title": "MR 102",
+      "webUrl": "https://gitlab.empresa.com/empresa/plataforma/-/merge_requests/102",
+      "state": "opened",
+      "draft": false,
+      "updatedAt": "2026-10-20T12:00:32-05:00",
+      "conflicts": false,
+      "mergeStatusEnum": "CAN_BE_MERGED",
+      "approved": false,
+      "resolvableDiscussionsCount": 0,
+      "resolvedDiscussionsCount": 0,
+      "project": {
+       "fullPath": "empresa/plataforma"
+      },
+      "author": {
+       "username": "miusuario"
+      },
+      "approvedBy": {
+       "nodes": []
+      },
+      "reviewers": {
+       "nodes": []
+      },
+      "headPipeline": null
+     },
+     {
+      "id": "gid://gitlab/MergeRequest/103",
+      "iid": "103",
+      "title": "MR 103",
+      "webUrl": "https://gitlab.empresa.com/empresa/plataforma/-/merge_requests/103",
+      "state": "opened",
+      "draft": false,
+      "updatedAt": "2026-10-20T12:00:32-05:00",
+      "conflicts": false,
+      "mergeStatusEnum": "CAN_BE_MERGED",
+      "approved": false,
+      "resolvableDiscussionsCount": 0,
+      "resolvedDiscussionsCount": 0,
+      "project": {
+       "fullPath": "miusuario/apuntes"
+      },
+      "author": {
+       "username": "miusuario"
+      },
+      "approvedBy": {
+       "nodes": []
+      },
+      "reviewers": {
+       "nodes": []
+      },
+      "headPipeline": null
+     }
+    ]
+   },
+   "revisor": {
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": null
+    },
+    "nodes": [
+     {
+      "id": "gid://gitlab/MergeRequest/105",
+      "iid": "105",
+      "title": "MR 105",
+      "webUrl": "https://gitlab.empresa.com/empresa/plataforma/-/merge_requests/105",
+      "state": "opened",
+      "draft": false,
+      "updatedAt": "2026-10-20T12:00:32-05:00",
+      "conflicts": false,
+      "mergeStatusEnum": "CAN_BE_MERGED",
+      "approved": false,
+      "resolvableDiscussionsCount": 0,
+      "resolvedDiscussionsCount": 0,
+      "project": {
+       "fullPath": "empresa/plataforma"
+      },
+      "author": {
+       "username": "colega"
+      },
+      "approvedBy": {
+       "nodes": []
+      },
+      "reviewers": {
+       "nodes": [
+        {
+         "username": "miusuario",
+         "mergeRequestInteraction": {
+          "reviewState": "UNREVIEWED"
+         }
+        },
+        {
+         "username": "ana",
+         "mergeRequestInteraction": {
+          "reviewState": "APPROVED"
+         }
+        }
+       ]
+      },
+      "headPipeline": null
+     },
+     {
+      "id": "gid://gitlab/MergeRequest/106",
+      "iid": "106",
+      "title": "MR 106",
+      "webUrl": "https://gitlab.empresa.com/empresa/plataforma/-/merge_requests/106",
+      "state": "opened",
+      "draft": false,
+      "updatedAt": "2026-10-20T12:00:32-05:00",
+      "conflicts": false,
+      "mergeStatusEnum": "CAN_BE_MERGED",
+      "approved": false,
+      "resolvableDiscussionsCount": 0,
+      "resolvedDiscussionsCount": 0,
+      "project": {
+       "fullPath": "empresa/plataforma"
+      },
+      "author": {
+       "username": "colega"
+      },
+      "approvedBy": {
+       "nodes": []
+      },
+      "reviewers": {
+       "nodes": [
+        {
+         "username": "miusuario",
+         "mergeRequestInteraction": {
+          "reviewState": "REVIEWED"
+         }
+        }
+       ]
+      },
+      "headPipeline": null
+     }
+    ]
+   }
+  }
+ }
+}

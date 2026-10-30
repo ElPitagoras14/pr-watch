@@ -44,6 +44,7 @@ from pr_watch.polling import State
 from pr_watch.providers.base import (
     InvalidCredential,
     NetworkError,
+    Provider,
     ProviderError,
     RateLimited,
     ScopeInaccessible,
@@ -79,27 +80,23 @@ class App:
             _log.warning("config.toml: %s", w)
         self.cfg = loaded.config
 
-        self.provider = providers.create(self.cfg.provider)
-        self.store = CredentialStore(
-            self.cfg.provider, config_dir, keyring_backend=system_keyring()
-        )
-        found = self.store.load()
-        self.token: Token | None = found.token if found else None
-        self.token_source: Source | None = found.source if found else None
-        if found:
-            _log.info("Token leido desde %s", found.source.value)
-
-        state_path = state_store.path_for(config_dir, self.cfg.provider) if self.provider else None
-        state = state_store.load(state_path) if state_path else State()
+        self.provider: Provider | None = None
+        self.store: CredentialStore
+        self.token: Token | None = None
+        self.token_source: Source | None = None
+        self.state_path: Path | None = None
+        state = self._bind_forge()
         self.poller = Poller(
-            self.provider, self._poll_settings(), state, state_path, self._on_update
+            self.provider, self._poll_settings(), state, self.state_path, self._on_update
         )
         self.snapshot: Snapshot = self.poller.snapshot()
 
         self.inbox = Inbox()
         self.logic = PanelLogic()
         self.notifier = Notifier(self.open_url, self.show_panel)
-        self.verified: tuple[str, str] | None = None
+        # (clave de la forja, ambito, token escrito) que supero las dos
+        # comprobaciones. Cambiar cualquiera de los tres la invalida.
+        self.verified: tuple[str, str, str] | None = None
         self.settings_prompted = False
         self.panel_h = 420
         self.settings_h = 640
@@ -163,6 +160,46 @@ class App:
                 self.tray.icon.update_menu()
             except Exception as e:
                 _log.debug("No se pudo refrescar el menu: %s", e)
+
+    # ---- forja activa ----
+
+    def _bind_forge(self) -> State:
+        """Ata proveedor, credencial y estado a la forja que dice la configuracion.
+
+        Se llama al arrancar y cada vez que el usuario cambia de proveedor o
+        de instancia: cada forja tiene su clave, y con ella su token y su
+        estado guardados aparte.
+        """
+        self.provider = providers.create(self.cfg)
+        key = self.provider.instance_key if self.provider else self.cfg.provider
+        self.store = CredentialStore(key, self.config_dir, keyring_backend=system_keyring())
+        found = self.store.load()
+        self.token = found.token if found else None
+        self.token_source = found.source if found else None
+        if found:
+            _log.info("Token de %s leido desde %s", key, found.source.value)
+        self.state_path = (
+            state_store.path_for(self.config_dir, key) if self.provider is not None else None
+        )
+        return state_store.load(self.state_path) if self.state_path else State()
+
+    def _forge_provider(self, forge: settings_model.Forge) -> Provider | None:
+        """El proveedor de la forja que la ventana tiene seleccionada."""
+        if forge.provider == self.cfg.provider and forge.host == settings_model.host_of(self.cfg):
+            return self.provider
+        return providers.create(settings_model.apply_forge(self.cfg, forge))
+
+    def _forge_token(self, provider: Provider | None) -> Token | None:
+        """El token guardado de esa forja, que puede no ser la activa."""
+        if provider is None:
+            return None
+        if self.provider is not None and provider.instance_key == self.provider.instance_key:
+            return self.token
+        store = CredentialStore(
+            provider.instance_key, self.config_dir, keyring_backend=system_keyring()
+        )
+        found = store.load()
+        return found.token if found else None
 
     def _poll_settings(self) -> Settings:
         return Settings(
@@ -268,13 +305,23 @@ class App:
             self._refresh_ui()
 
     def open_url(self, url: str) -> None:
-        allowed = url == settings_model.github.CREATE_TOKEN_URL or (
-            self.provider is not None and self.provider.allows_url(url)
-        )
-        if not allowed:
-            _log.warning("URL rechazada: no es del proveedor")
+        if self.provider is None or not self.provider.allows_url(url):
+            _log.warning("URL rechazada: no es del proveedor activo")
             return
         webbrowser.open(url)
+
+    def open_create_token(self, forge: dict[str, Any]) -> None:
+        """Abre la pagina de creacion de token de la forja seleccionada.
+
+        La URL la construye el proveedor, no llega desde la ventana: asi
+        tambien sirve para una forja a la que el usuario aun no ha cambiado.
+        """
+        provider = self._forge_provider(settings_model.forge_from(forge))
+        destino = provider.descriptor.create_token_url if provider else ""
+        if not destino:
+            _log.warning("Sin pagina de creacion de token para esa forja")
+            return
+        webbrowser.open(destino)
 
     def toggle_autostart(self) -> None:
         wanted = not self.autostart.is_enabled()
@@ -337,42 +384,53 @@ class App:
     def settings_load(self) -> dict[str, Any]:
         return settings_model.load(
             self.cfg,
+            self.provider,
             has_token=self.token is not None,
             plaintext=self.token_source is Source.FILE,
             first_run=self.token is None,
         )
 
-    def settings_verify_token(self, token: str) -> dict[str, Any]:
-        """Paso 1: el token por si solo. Devuelve login y organizaciones, nunca el token."""
-        candidate = Token(token) if token else self.token
+    def settings_verify_token(self, forge: dict[str, Any], token: str) -> dict[str, Any]:
+        """Paso 1: el token por si solo, contra la forja seleccionada.
+
+        Devuelve el usuario y los ambitos elegibles, nunca el token.
+        """
+        provider = self._forge_provider(settings_model.forge_from(forge))
+        if provider is None:
+            return {"ok": False, "kind": "network", "message": "esa forja no es utilizable"}
+        candidate = Token(token) if token else self._forge_token(provider)
         if candidate is None:
-            return {"ok": False, "kind": "invalid", "message": "falta el token"}
-        if self.provider is None:
-            return {"ok": False, "kind": "network", "message": "proveedor no soportado"}
+            # `missing` distingue "aun no hay token" de "el token no vale":
+            # al cambiar de forja no se pinta un error, se pide el token.
+            return {"ok": False, "kind": "invalid", "missing": True, "message": "falta el token"}
         try:
-            found = self.provider.list_scopes(candidate)
+            found = provider.list_scopes(candidate)
         except InvalidCredential as e:
             return {"ok": False, "kind": "invalid", "message": str(e)}
+        except ScopeInaccessible as e:
+            return {"ok": False, "kind": "scope", "message": str(e)}
         except RateLimited as e:
             return {"ok": False, "kind": "rate", "message": str(e)}
         except (NetworkError, ProviderError) as e:
             return {"ok": False, "kind": "network", "message": str(e) or type(e).__name__}
-        provider = self.provider
         return {
             "ok": True,
             "login": found.identity.login,
             "scopes": [{"value": s, "label": provider.scope_label(s)} for s in found.scopes],
         }
 
-    def settings_verify(self, scope: str, token: str) -> dict[str, Any]:
-        """Paso 2: la organizacion elegida, con el mismo token."""
-        candidate = Token(token) if token else self.token
+    def settings_verify(self, forge: dict[str, Any], scope: str, token: str) -> dict[str, Any]:
+        """Paso 2: el ambito elegido, con el mismo token y la misma forja."""
+        provider = self._forge_provider(settings_model.forge_from(forge))
+        if provider is None:
+            return {"ok": False, "kind": "network", "message": "esa forja no es utilizable"}
+        candidate = Token(token) if token else self._forge_token(provider)
         if candidate is None:
-            return {"ok": False, "kind": "invalid", "message": "falta el token"}
-        if self.provider is None:
-            return {"ok": False, "kind": "network", "message": "proveedor no soportado"}
+            # `missing` distingue "aun no hay token" de "el token no vale":
+            # al cambiar de forja no se pinta un error, se pide el token.
+            return {"ok": False, "kind": "invalid", "missing": True, "message": "falta el token"}
         try:
-            ident = self.provider.verify(scope, candidate)
+            ident = provider.verify(scope, candidate)
         except InvalidCredential as e:
             return {"ok": False, "kind": "invalid", "message": str(e)}
         except ScopeInaccessible as e:
@@ -382,20 +440,37 @@ class App:
         except (NetworkError, ProviderError) as e:
             return {"ok": False, "kind": "network", "message": str(e) or type(e).__name__}
         with self._lock:
-            self.verified = (scope, token)
+            self.verified = (provider.instance_key, scope, token)
         return {"ok": True, "login": ident.login}
 
     def settings_save(self, payload: dict[str, Any]) -> dict[str, Any]:
         parsed = settings_model.parse(self.cfg, payload)
+        if parsed.error:
+            return {"ok": False, "error": parsed.error}
+        pendiente = self._forge_provider(parsed.forge)
+        if pendiente is None:
+            return {"ok": False, "error": "Esa forja no es utilizable: revisa la dirección."}
         needs_verify = settings_model.credential_changes(self.cfg, parsed) or self.token is None
-        if needs_verify and self.verified != (parsed.scope, parsed.token):
-            return {"ok": False, "error": "Verifica la organización y el token antes de guardar."}
+        if needs_verify and self.verified != (pendiente.instance_key, parsed.scope, parsed.token):
+            return {"ok": False, "error": "Verifica el token y el ámbito antes de guardar."}
+
         new_cfg = parsed.config.with_scope(parsed.scope)
+        cambia_forja = settings_model.forge_changes(self.cfg, new_cfg)
         try:
             config.save(new_cfg, self.config_path)
         except OSError as e:
             _log.warning("No se pudo guardar config.toml: %s", e)
             return {"ok": False, "error": f"No se pudo guardar la configuración: {e}"}
+
+        if cambia_forja:
+            # El estado de la forja que se abandona se persiste antes de
+            # soltarla; si no, lo ya visto alli se perderia.
+            self.poller.save_now()
+        with self._lock:
+            turned_on = new_cfg.notifications and not self.cfg.notifications
+            self.cfg = new_cfg
+        state = self._bind_forge() if cambia_forja else None
+
         if parsed.token:
             token = Token(parsed.token)
             try:
@@ -405,12 +480,19 @@ class App:
             with self._lock:
                 self.token = token
                 self.token_source = source
-        with self._lock:
-            turned_on = new_cfg.notifications and not self.cfg.notifications
-            self.cfg = new_cfg
         if turned_on:
             self.notifier.reset()
-        self.poller.reconfigure(self._poll_settings())
+
+        if state is not None:
+            _log.info("Forja activa: %s", new_cfg.provider)
+            # Ni novedades ni notificaciones pendientes de la forja anterior:
+            # el primer sondeo de la nueva no debe llegar como un aluvion.
+            self.inbox.reset()
+            self.notifier.reset()
+            self.poller.rebind(self.provider, self._poll_settings(), state, self.state_path)
+        else:
+            self.poller.reconfigure(self._poll_settings())
+        self.snapshot = self.poller.snapshot()
         self.close_settings()
         self._refresh_ui()
         return {"ok": True, "notes": parsed.notes}

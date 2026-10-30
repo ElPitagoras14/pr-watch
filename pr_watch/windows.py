@@ -190,11 +190,11 @@ class SettingsApi:
     def settings_load(self) -> dict[str, Any]:
         return self._app.settings_load()
 
-    def settings_verify_token(self, token: str) -> dict[str, Any]:
-        return self._app.settings_verify_token(str(token or ""))
+    def settings_verify_token(self, forge: dict[str, Any], token: str) -> dict[str, Any]:
+        return self._app.settings_verify_token(dict(forge or {}), str(token or ""))
 
-    def settings_verify(self, scope: str, token: str) -> dict[str, Any]:
-        return self._app.settings_verify(str(scope or ""), str(token or ""))
+    def settings_verify(self, forge: dict[str, Any], scope: str, token: str) -> dict[str, Any]:
+        return self._app.settings_verify(dict(forge or {}), str(scope or ""), str(token or ""))
 
     def settings_save(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self._app.settings_save(dict(payload or {}))
@@ -207,6 +207,9 @@ class SettingsApi:
 
     def open_url(self, url: str) -> None:
         self._app.open_url(str(url))
+
+    def open_create_token(self, forge: dict[str, Any]) -> None:
+        self._app.open_create_token(dict(forge or {}))
 
     def open_config_file(self) -> None:
         self._app.open_config_file()

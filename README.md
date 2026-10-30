@@ -1,6 +1,6 @@
 # pr-watch
 
-Vigila los pull requests de GitHub que te involucran y los deja visibles en la bandeja del sistema. Solo lectura.
+Vigila los pull requests que te involucran y los deja visibles en la bandeja del sistema. Solo lectura. Habla con **GitHub** o con **GitLab** —la nube o una instancia propia—, una forja a la vez, y se cambia de una a otra desde la ventana de ajustes.
 
 ```
 ┌──────────────────────────────────────────┐
@@ -30,17 +30,17 @@ El icono de bandeja es el glifo de un pull request, claro u oscuro según tu bar
 
 El panel se oculta al perder el foco, salvo que lo fijes con el icono de fijar. La ✕ y Escape lo esconden, no cierran la aplicación: para salir, `Salir` desde el menú del icono.
 
-Es la versión para GitHub de mr-watch, rehecha en Python para poder iterar rápido sobre la interfaz.
+Es la versión para GitHub y GitLab de mr-watch, rehecha en Python para poder iterar rápido sobre la interfaz.
 
 ## Qué vigila
 
-Los pull requests abiertos de **una organización, o de tus repositorios personales**, donde apareces de alguna de estas tres formas: los creaste tú (`author:@me`), tienes la revisión pedida, a ti o a un equipo tuyo (`review-requested:@me`), o te los asignaron (`assignee:@me`). De cada uno se muestran las aprobaciones, los cambios pedidos, los checks, los conflictos y las conversaciones sin resolver. Los borradores no salen. Los fusionados o cerrados se quedan 15 minutos y luego desaparecen.
+Los pull requests (o *merge requests*) abiertos de **un ámbito**: una organización de GitHub o un grupo de GitLab —con sus subgrupos—, o tus repositorios personales; donde apareces de alguna de estas tres formas: los creaste tú (`author:@me`), tienes la revisión pedida, a ti o a un equipo tuyo (`review-requested:@me`), o te los asignaron (`assignee:@me`). De cada uno se muestran las aprobaciones, los cambios pedidos, los checks, los conflictos y las conversaciones sin resolver. Los borradores no salen. Los fusionados o cerrados se quedan 15 minutos y luego desaparecen.
 
 Quién aprobó se ve al detenerse sobre la fila. Las aprobaciones se muestran como `aprobado (2)`, nunca `2/2`: el número requerido depende de reglas de protección que no siempre son visibles, e inventarlo daría un dato con aspecto oficial que no lo es.
 
 ## Qué NO hace
 
-No aprueba, no comenta y no fusiona. La API GraphQL de GitHub se consulta por `POST`, así que la garantía no puede ser "solo `GET`": es doble. El token se pide **sin permisos de escritura**, y el cliente se niega a enviar cualquier documento que contenga una `mutation`.
+No aprueba, no comenta y no fusiona. La API GraphQL se consulta por `POST`, así que la garantía no puede ser "solo `GET`": es doble. El token se pide **sin permisos de escritura**, y el cliente se niega a enviar cualquier documento que contenga una `mutation`.
 
 ## Instalación
 
@@ -66,6 +66,8 @@ Para desinstalar: desactiva `Arrancar con la sesión`, sal y borra el ejecutable
 
 ### El token
 
+#### GitHub
+
 Crea un [*fine-grained personal access token*](https://github.com/settings/personal-access-tokens/new) con:
 
 - **Resource owner**: la organización, o tu cuenta si quieres vigilar tus repositorios personales.
@@ -74,13 +76,25 @@ Crea un [*fine-grained personal access token*](https://github.com/settings/perso
 
 Si la organización exige aprobar los tokens, hasta que lo aprueben la aplicación dirá que no tiene acceso a la organización. No es lo mismo que un token inválido, y por eso lo distingue.
 
-La primera vez la aplicación arranca a la bandeja sin pedir nada. Al abrir el panel sale también la ventana de ajustes. Primero pegas el token y pulsas `Verificar token`, que responde `Conectado como <usuario>` y llena la lista de organizaciones que ve ese token. La primera opción es siempre tu **cuenta personal** (solo tus repositorios); el resto, organizaciones. Eliges una, se comprueba el acceso, y guardas; no hace falta reiniciar. Un *fine-grained token* no puede listar organizaciones (GitHub le devuelve siempre una lista vacía), así que en ese caso se deducen de los repositorios a los que el token tiene acceso: con la organización como dueña del token, aparece ella. Si aun así no aparece, la opción `Otra (escribir a mano)…` deja escribir el nombre.
+#### GitLab
 
-El token vive en el almacén de credenciales del sistema, bajo el servicio `pr-watch`. Donde no hay almacén (Linux sin Secret Service), va a un archivo con permisos `600`, y la ventana de ajustes avisa de que quedó en texto plano. Para desarrollo también se acepta en la variable `PR_WATCH_TOKEN` o en un `.env` del directorio de trabajo. `GITHUB_TOKEN` y `GH_TOKEN` se ignoran a propósito, porque suelen tener permisos de escritura.
+Crea un *personal access token* en `<tu instancia>/-/user_settings/personal_access_tokens` con un único ámbito: **`read_api`**. El enlace `Crear token` de la ventana de ajustes abre esa página en la instancia que tengas seleccionada.
+
+Hace falta **GitLab 16 o posterior**; la verificación consulta la versión de la instancia y, si es anterior, lo dice con la versión encontrada en lugar de fallar más tarde con un error críptico. Funciona igual en Community y en las ediciones de pago: el cliente solo pide campos que existen en Community.
+
+Si la instancia es propia y presenta un certificado de una CA corporativa, basta con que esa CA esté en el almacén del sistema; la aplicación lo usa tal cual y no ofrece desactivar la verificación TLS.
+
+#### El recorrido
+
+La primera vez la aplicación arranca a la bandeja sin pedir nada. Al abrir el panel sale también la ventana de ajustes. Eliges el proveedor —y, con GitLab, la dirección de la instancia: `https://gitlab.com` o la tuya—, pegas el token y pulsas `Verificar token`, que responde `Conectado como <usuario>` y llena la lista de ámbitos que ve ese token: organizaciones en GitHub, grupos en GitLab. La primera opción es siempre tu **cuenta o espacio personal** (solo tus repositorios); el resto, organizaciones o grupos (por su ruta completa, subgrupos incluidos). Eliges una, se comprueba el acceso, y guardas; no hace falta reiniciar. Un *fine-grained token* no puede listar organizaciones (GitHub le devuelve siempre una lista vacía), así que en ese caso se deducen de los repositorios a los que el token tiene acceso: con la organización como dueña del token, aparece ella. Si aun así no aparece, la opción `Otro (escribir a mano)…` deja escribir el nombre.
+
+Cambiar de forja y volver no obliga a reconfigurar: **cada una guarda su token y su ámbito por separado**, y el panel no mezcla lo de una con lo de la otra. Dos instancias distintas de GitLab también cuentan como forjas distintas.
+
+El token vive en el almacén de credenciales del sistema, bajo el servicio `pr-watch`, con una entrada por forja (`github`, `gitlab@gitlab-telconet-ec`…). Donde no hay almacén (Linux sin Secret Service), va a un archivo con permisos `600`, y la ventana de ajustes avisa de que quedó en texto plano. Para desarrollo también se acepta en la variable `PR_WATCH_TOKEN` o en un `.env` del directorio de trabajo; con varias forjas conviene la variable propia de cada una (`PR_WATCH_TOKEN_GITHUB`, `PR_WATCH_TOKEN_GITLAB_GITLAB_TELCONET_EC`…), que gana a la genérica. `GITHUB_TOKEN` y `GH_TOKEN` se ignoran a propósito, porque suelen tener permisos de escritura.
 
 ## Configuración
 
-Lo habitual se cambia en la ventana de ajustes: organización y token, cada cuánto se consulta, el tope de PR por bloque y las notificaciones. Lo que se guarda ahí surte efecto sin reiniciar.
+Lo habitual se cambia en la ventana de ajustes: proveedor, instancia, ámbito y token, cada cuánto se consulta, el tope por bloque y las notificaciones. Lo que se guarda ahí surte efecto sin reiniciar.
 
 Por debajo está `config.toml`, en `%APPDATA%\pr-watch` en Windows o `~/.config/pr-watch` en Linux:
 
@@ -94,7 +108,14 @@ notifications = false
 [github]
 org = "contoso"     # o, para tus repositorios personales:
 # user = "miusuario"
+
+[gitlab]
+host = "https://gitlab.com"   # o la instancia propia: https://gitlab.empresa.com
+group = "empresa/plataforma"  # admite subgrupos; o, para tu espacio personal:
+# user = "miusuario"
 ```
+
+`provider` decide cuál de las dos tablas se usa. Las dos se conservan siempre en el archivo, así que ir y volver entre forjas no obliga a reescribir el ámbito. Un `host` que no sea una dirección utilizable deja la aplicación sin sondear y lo avisa, en lugar de consultar a ciegas.
 
 Un `config.toml` con errores de sintaxis **no impide arrancar**: se usan los valores por defecto y tu archivo se deja intacto.
 
@@ -117,14 +138,20 @@ La **vista previa** abre el panel y la ventana de ajustes en el navegador, con e
 
 `PR_WATCH_CONFIG_DIR` cambia el directorio de configuración, para probar sin tocar el real. `PR_WATCH_DEBUG=1` sube el registro a nivel de depuración, y `PR_WATCH_DEVTOOLS=1` abre las herramientas de desarrollo de las ventanas.
 
-Para comprobar el token y los permisos contra GitHub sin la interfaz:
+Para comprobar el token y los permisos contra la forja sin la interfaz:
 
 ```
 uv run python -m pr_watch.providers.github --check
+uv run python -m pr_watch.providers.gitlab --check
 ```
 
 El ejecutable de Linux se construye en Linux; desde Windows vale WSL. El binario solo funciona en distribuciones con una glibc igual o más nueva que la del sistema donde se construyó, así que conviene construirlo en la más antigua que se quiera soportar.
 
 ### Otros proveedores
 
-Todo lo que no es `pr_watch/providers/` trabaja con un modelo neutro de pull request. Añadir GitLab (cloud o self-hosted) consiste en escribir otro módulo que cumpla el contrato de `providers/base.py` y registrarlo en `providers/__init__.py`.
+Todo lo que no es `pr_watch/providers/` trabaja con un modelo neutro de pull request, y el vocabulario de la interfaz lo pone el proveedor (`PR` y `#142` en GitHub, `MR` y `!142` en GitLab). Añadir una forja más consiste en escribir otro módulo que cumpla el contrato de `providers/base.py` y registrarlo en `providers/__init__.py`.
+
+El de GitLab tiene dos detalles que conviene saber antes de tocarlo:
+
+- **La introspección del esquema no es de fiar**: la instancia responde con un esquema cacheado que anuncia campos que luego rechaza al ejecutarlos. Lo que vale es ejecutar la consulta.
+- **El límite que aprieta es la complejidad**, 250 por petición, no la paginación (100 nodos). El documento de sondeo marca 169 con página de 50; cada campo nuevo lo acerca al techo, así que pide `queryComplexity` y avisa en el registro al pasar del 80 %.

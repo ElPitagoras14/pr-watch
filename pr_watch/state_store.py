@@ -22,8 +22,9 @@ SCHEMA_VERSION = 1
 _log = logging.getLogger(__name__)
 
 
-def path_for(config_dir: Path, provider: str) -> Path:
-    return config_dir / f"state-{provider}.json"
+def path_for(config_dir: Path, key: str) -> Path:
+    """Un archivo por forja: la clave incluye la instancia cuando hay varias."""
+    return config_dir / f"state-{key}.json"
 
 
 def _pr_to_json(pr: PullRequest) -> dict[str, Any]:
