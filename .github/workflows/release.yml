@@ -1,0 +1,212 @@
+name: release
+
+# Publicar una version es subir a main un commit que la sube: check-version mira
+# si ya existe el tag y, si existe, el pipeline se acaba ahi.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Dos pushes seguidos no pueden competir por el mismo tag.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  check-version:
+    name: check-version
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      publish: ${{ steps.decidir.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # Sin uv ni dependencias: el script es solo biblioteca estandar, asi que
+      # este job dura segundos aunque el resto del pipeline no llegue a correr.
+      - name: Leer la version del proyecto
+        id: version
+        run: python3 scripts/release_version.py
+
+      - name: Decidir si hay algo que publicar
+        id: decidir
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if git ls-remote --tags --exit-code origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "La version $VERSION ya esta publicada: nada que hacer." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "Publicando la version $VERSION." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  verify:
+    name: verify
+    needs: check-version
+    if: needs.check-version.outputs.publish == 'true'
+    # En Windows porque es donde pyright --strict resuelve winreg, que en
+    # autostart.py y theme.py se importa sin type: ignore. Las pruebas corren
+    # ademas en Linux, dentro de build-linux.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run python -m unittest discover -s tests
+      - run: uv run ruff check
+      - run: uv run pyright
+
+  build-windows:
+    name: build (windows)
+    needs: [check-version, verify]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+
+      - name: Construir el ejecutable
+        run: uv run build.py
+
+      - name: Comprobar que existe
+        shell: pwsh
+        run: |
+          if (-not (Test-Path dist/pr-watch.exe)) { throw "no se genero dist/pr-watch.exe" }
+          Get-Item dist/pr-watch.exe | Select-Object Name, Length
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pr-watch-windows
+          path: dist/pr-watch.exe
+          if-no-files-found: error
+          retention-days: 7
+
+  build-linux:
+    name: build (linux)
+    needs: [check-version, verify]
+    # Fijo, no ubuntu-latest: el runner decide contra que glibc queda enlazado
+    # el binario, y con el la distribucion mas antigua que lo puede ejecutar.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      # pygobject y pycairo estan en el bloqueo como sdist: hay que compilarlos.
+      # Los paquetes gir1.2-* son los mismos que el README pide al usuario final.
+      - name: Dependencias del sistema
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgirepository-2.0-dev \
+            libcairo2-dev \
+            pkg-config \
+            gir1.2-gtk-3.0 \
+            gir1.2-webkit2-4.1 \
+            gir1.2-ayatanaappindicator3-0.1
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+
+      # La cobertura de Linux que verify no puede dar: el entorno ya esta aqui.
+      - run: uv run python -m unittest discover -s tests
+
+      - name: Construir el ejecutable
+        run: uv run build.py
+
+      - name: Comprobar que existe
+        run: |
+          test -x dist/pr-watch || { echo "no se genero dist/pr-watch"; exit 1; }
+          ls -la dist/pr-watch
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pr-watch-linux
+          path: dist/pr-watch
+          if-no-files-found: error
+          retention-days: 7
+
+  tag:
+    name: tag
+    needs: [check-version, build-windows, build-linux]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      # Sin --force: si otra ejecucion ya creo el tag, esto falla y no se
+      # publica encima de lo que ya existe.
+      - name: Crear y empujar el tag
+        env:
+          VERSION: ${{ needs.check-version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "pr-watch v$VERSION"
+          git push origin "refs/tags/v$VERSION"
+
+  release:
+    name: release
+    needs: [check-version, tag]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: artefactos
+          merge-multiple: true
+
+      - name: Armar las notas
+        env:
+          VERSION: ${{ needs.check-version.outputs.version }}
+        run: |
+          git fetch --tags --force --quiet
+          anterior=$(git describe --tags --abbrev=0 "v$VERSION^" 2>/dev/null || true)
+          if [ -n "$anterior" ]; then
+            rango="$anterior..v$VERSION"
+            echo "Cambios desde $anterior:" > notas.md
+          else
+            rango="v$VERSION"
+            echo "Primera version publicada." > notas.md
+          fi
+          echo >> notas.md
+          git log --no-merges --pretty=format:'- %s (%h)' "$rango" >> notas.md
+          cat >> notas.md <<'FIN'
+
+
+          ---
+
+          **Windows**: descarga `pr-watch.exe` y ejecutalo. Es portable: no hay instalador ni hace falta Python.
+
+          **Linux**: descarga `pr-watch`, dale permiso de ejecucion (`chmod +x pr-watch`) y ejecutalo. Se construye en Ubuntu 24.04 y lleva dentro su propio glib, asi que del sistema necesita glibc 2.38 o mas nueva (Ubuntu 23.10+, Debian 13+, Fedora 39+), mas GTK, WebKit y el indicador de bandeja:
+
+          ```
+          sudo apt install gir1.2-gtk-3.0 gir1.2-webkit2-4.1 gir1.2-ayatanaappindicator3-0.1
+          ```
+          FIN
+          cat notas.md
+
+      - name: Publicar el release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check-version.outputs.version }}
+        run: |
+          chmod +x artefactos/pr-watch
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --notes-file notas.md \
+            artefactos/pr-watch.exe \
+            artefactos/pr-watch
