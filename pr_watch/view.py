@@ -163,8 +163,9 @@ def _account(snap: Snapshot, provider: Provider | None, cfg: Config) -> list[Jso
     ]
 
 
-def _notice(snap: Snapshot, cfg: Config) -> Json | None:
+def _notice(snap: Snapshot, provider: Provider | None, cfg: Config) -> Json | None:
     settings_action = {"label": "Abrir ajustes", "action": "settings"}
+    forja = provider.descriptor.display_name if provider else cfg.provider
     match snap.health:
         case Health.UNCONFIGURED:
             return {
@@ -175,7 +176,7 @@ def _notice(snap: Snapshot, cfg: Config) -> Json | None:
         case Health.INVALID_CREDENTIAL:
             return {
                 "tone": RED,
-                "text": "GitHub rechazó el token: hay que renovarlo.",
+                "text": f"{forja} rechazó el token: hay que renovarlo.",
                 "action": settings_action,
             }
         case Health.SCOPE_INACCESSIBLE:
@@ -194,14 +195,14 @@ def _notice(snap: Snapshot, cfg: Config) -> Json | None:
             when = f" desde las {clock(snap.last_success)}" if snap.last_success else ""
             return {
                 "tone": AMBER,
-                "text": f"Datos desactualizados{when}: no se pudo conectar con GitHub.",
+                "text": f"Datos desactualizados{when}: no se pudo conectar con {forja}.",
                 "action": None,
             }
         case Health.RATE_LIMITED:
             until = f" hasta las {clock(snap.suspended_until)}" if snap.suspended_until else ""
             return {
                 "tone": AMBER,
-                "text": f"Límite de peticiones de GitHub agotado{until}.",
+                "text": f"Límite de peticiones de {forja} agotado{until}.",
                 "action": None,
             }
         case Health.OK | Health.STARTING:
@@ -252,7 +253,7 @@ def panel(
             )
         if not mine and not review:
             if snap.health is Health.STARTING:
-                empty = "Consultando GitHub…"
+                empty = f"Consultando {provider.descriptor.display_name}…"
             elif snap.last_success is not None:
                 empty = "No hay pull requests abiertos que te involucren."
             blocks = [] if empty else blocks
@@ -261,7 +262,7 @@ def panel(
         "title": APP_TITLE,
         "pinned": pinned,
         "account": _account(snap, provider, cfg),
-        "notice": _notice(snap, cfg),
+        "notice": _notice(snap, provider, cfg),
         "blocks": blocks,
         "empty": empty,
         "footer": {
