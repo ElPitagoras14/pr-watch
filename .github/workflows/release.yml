@@ -83,6 +83,38 @@ jobs:
           if (-not (Test-Path dist/pr-watch.exe)) { throw "no se genero dist/pr-watch.exe" }
           Get-Item dist/pr-watch.exe | Select-Object Name, Length
 
+      # Se omite entero si el secreto no esta configurado (local, forks, PRs
+      # externos): el build sigue produciendo el .exe sin firmar, igual que hoy.
+      - name: Firmar el ejecutable
+        if: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 != '' }}
+        shell: pwsh
+        env:
+          WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
+          WINDOWS_CODESIGN_PFX_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PFX_PASSWORD }}
+        run: |
+          $pfxPath = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+          try {
+            [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:WINDOWS_CODESIGN_PFX_BASE64))
+
+            $signtool = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
+              Where-Object { $_.FullName -match "x64" } |
+              Select-Object -First 1 -ExpandProperty FullName
+            if (-not $signtool) { throw "no se encontro signtool.exe" }
+
+            & $signtool sign /f $pfxPath /p $env:WINDOWS_CODESIGN_PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 dist\pr-watch.exe
+            if ($LASTEXITCODE -ne 0) { throw "signtool termino con codigo $LASTEXITCODE" }
+          } finally {
+            if (Test-Path $pfxPath) { Remove-Item $pfxPath -Force }
+          }
+
+      - name: Verificar la firma
+        if: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 != '' }}
+        shell: pwsh
+        run: |
+          $firma = Get-AuthenticodeSignature dist/pr-watch.exe
+          if ($firma.Status -eq 'NotSigned') { throw "dist/pr-watch.exe no quedo firmado" }
+          $firma | Select-Object Status, StatusMessage, SignerCertificate
+
       - uses: actions/upload-artifact@v7
         with:
           name: pr-watch-windows

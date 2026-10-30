@@ -50,6 +50,8 @@ Los dos ejecutables están en el [último release](https://github.com/ElPitagora
 
 Descarga [`pr-watch.exe`](https://github.com/ElPitagoras14/pr-watch/releases/latest) y ejecútalo. Es un único archivo portable: no hay instalador ni hace falta Python.
 
+El `.exe` oficial va firmado (Authenticode) con un certificado autofirmado de Telconet: en Propiedades → Firmas digitales aparece el nombre del editor. Fuera de la red de Telconet, hasta que IT distribuya el certificado por GPO como raíz de confianza, Windows SmartScreen puede seguir avisando al abrirlo igual que con un `.exe` sin firmar — ver [`docs/firma-de-codigo.md`](docs/firma-de-codigo.md) para el procedimiento de generación del certificado.
+
 ### Linux
 
 Descarga [`pr-watch`](https://github.com/ElPitagoras14/pr-watch/releases/latest), dale permiso de ejecución (`chmod +x pr-watch`) y ejecútalo. El binario oficial se construye en Ubuntu 24.04 y lleva dentro Python, sus dependencias y su propio glib, así que del sistema necesita **glibc 2.38 o más nueva** (Ubuntu 23.10+, Debian 13+, Fedora 39+) más GTK, WebKit y el indicador de bandeja. En una distribución más antigua hay que construirlo allí. En Debian/Ubuntu:
