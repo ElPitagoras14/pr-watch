@@ -24,6 +24,26 @@ if sys.platform == "win32":
     # apagar la comprobacion del resto del modulo.
     _PystrayIcon: Any = pystray.Icon
 
+    def _force_foreground(hwnd: int) -> None:
+        """Pone `hwnd` en primer plano aunque Windows se resista.
+
+        `SetForegroundWindow` falla en silencio si el proceso no recibio la
+        ultima entrada del usuario, y eso depende de como se lanzo: desde una
+        terminal funciona, con doble clic en el Explorador no. Sin primer plano
+        el menu se dibuja pero no resalta la opcion bajo el raton. Enlazar la
+        cola de entrada con la del hilo en primer plano lo permite.
+        """
+        user32 = ctypes.windll.user32
+        mine = ctypes.windll.kernel32.GetCurrentThreadId()
+        front = user32.GetForegroundWindow()
+        theirs = user32.GetWindowThreadProcessId(front, None) if front else 0
+        attached = bool(theirs and theirs != mine and user32.AttachThreadInput(mine, theirs, True))
+        try:
+            win32.SetForegroundWindow(hwnd)
+        finally:
+            if attached:
+                user32.AttachThreadInput(mine, theirs, False)
+
     class WindowsIcon(_PystrayIcon):
         """pystray abre el menu sobre una ventana distinta de la que pone delante.
 
@@ -45,7 +65,7 @@ if sys.platform == "win32":
                 super()._on_notify(wparam, lparam)
                 return
 
-            win32.SetForegroundWindow(self._menu_hwnd)
+            _force_foreground(self._menu_hwnd)
             point = wintypes.POINT()
             win32.GetCursorPos(ctypes.byref(point))
             hmenu, descriptors = self._menu_handle
