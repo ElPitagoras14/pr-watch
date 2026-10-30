@@ -216,9 +216,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.check-version.outputs.version }}
         run: |
-          chmod +x artefactos/pr-watch
+          chmod +x "artefactos/pr-watch-$VERSION-linux"
           gh release create "v$VERSION" \
             --title "v$VERSION" \
             --notes-file notas.md \
-            artefactos/pr-watch.exe \
-            artefactos/pr-watch
+            "artefactos/pr-watch-$VERSION-windows.exe" \
+            "artefactos/pr-watch-$VERSION-linux"
