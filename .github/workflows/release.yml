@@ -53,7 +53,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      # Version exacta: setup-uv no publica un tag mayor movil como actions/*.
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - run: uv sync --locked
@@ -67,7 +68,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      # Version exacta: setup-uv no publica un tag mayor movil como actions/*.
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - run: uv sync --locked
@@ -110,7 +112,8 @@ jobs:
             gir1.2-webkit2-4.1 \
             gir1.2-ayatanaappindicator3-0.1
 
-      - uses: astral-sh/setup-uv@v10
+      # Version exacta: setup-uv no publica un tag mayor movil como actions/*.
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - run: uv sync --locked
