@@ -17,6 +17,27 @@ ROOT = Path(__file__).resolve().parent
 UI = ROOT / "pr_watch" / "ui"
 NAME = "pr-watch"
 
+# Lo que PyInstaller arrastra por defecto y aqui no se usa. Pillow es el grueso:
+# `icon.py` solo traza elipses y lineas y guarda .ico/.png, asi que los codecs y
+# el motor de texto son 10,6 MB sin comprimir de peso muerto. Quitarlos es
+# seguro: `Image.init()` se traga el ImportError de cada plugin e `ImageFont` ya
+# contempla que `_imagingft` falte (DeferredError), que es justo lo que pasa al
+# excluirlo.
+UNUSED = (
+    "PIL.AvifImagePlugin",  # 7,7 MB: el codec AVIF, el mas pesado con diferencia
+    "PIL._avif",
+    "PIL._imagingft",  # 2,2 MB: FreeType, y no se dibuja texto
+    "PIL.WebPImagePlugin",
+    "PIL._webp",
+    "PIL.ImageCms",  # perfiles de color
+    "PIL._imagingcms",
+    "PIL.ImageTk",  # arrastra tkinter entero
+    "tkinter",
+    "unittest",
+    "pydoc",
+    "doctest",
+)
+
 LAUNCHER = """\
 import sys
 from pr_watch.__main__ import main
@@ -85,6 +106,7 @@ def main() -> int:
         # La vista previa no viaja en el ejecutable.
         "--exclude-module",
         "pr_watch.preview",
+        *[arg for mod in UNUSED for arg in ("--exclude-module", mod)],
         "--collect-submodules",
         "pr_watch",
         "--collect-submodules",
