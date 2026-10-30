@@ -15,6 +15,7 @@ mr-watch resuelve bien "qué merge requests me esperan" desde la bandeja, pero e
   - Token: *fine-grained personal access token* de GitHub con la organización como dueño y permisos de solo lectura.
   - Un solo ritmo de sondeo en lugar de dos: la API GraphQL de GitHub devuelve en una sola consulta el listado con revisiones, checks, conflictos y conversaciones, así que el ritmo de "detalle" de mr-watch, que existía porque el listado de GitLab no traía aprobaciones ni pipeline, sobra.
   - "Solo lectura" ya no puede significar "solo `GET`": GraphQL se consulta por `POST`. La garantía pasa a ser doble: el token no tiene permisos de escritura y el cliente se niega a enviar cualquier documento GraphQL que no sea una `query`.
+  - El autoarranque es opcional y viene apagado, como en usage-monitor: se activa desde la entrada `Arrancar con la sesión` del menú de bandeja. mr-watch se registraba por su cuenta.
   - El panel puede abrirse en un navegador normal con datos de ejemplo para iterar sobre el CSS sin arrancar la aplicación.
 
 ## Capabilities

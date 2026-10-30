@@ -18,11 +18,11 @@ La aplicación SHALL residir en la bandeja del sistema de forma permanente. Acti
 
 ### Requirement: Acciones fijas del menú
 
-El menú SHALL incluir siempre `Abrir pr-watch`, `Actualizar ahora` y `Salir`, y SHALL funcionar con el panel cerrado.
+El menú SHALL incluir siempre `Abrir pr-watch`, `Actualizar ahora`, `Arrancar con la sesión` (marcable, ver `app-config`) y `Salir`, y SHALL funcionar con el panel cerrado.
 
 #### Scenario: Acciones siempre presentes
 - **WHEN** el menú se abre en cualquier estado, incluso sin pull requests, con GitHub inalcanzable o sin configurar
-- **THEN** las tres acciones están presentes y operativas
+- **THEN** las cuatro acciones están presentes y operativas
 
 #### Scenario: Salir
 - **WHEN** el usuario activa `Salir`

@@ -28,13 +28,17 @@ La aplicación SHALL ofrecer sus ajustes en una ventana propia, distinta del pan
 - **WHEN** el usuario cierra el panel con la ventana de ajustes abierta
 - **THEN** la ventana de ajustes se cierra con él, descartando lo no guardado
 
-### Requirement: Organización y token con verificación
+### Requirement: Primero el token, después la organización
 
-La ventana SHALL permitir cambiar la organización de GitHub y el token. La organización SHALL venir rellena con la configurada y el token SHALL mostrarse enmascarado y vacío. La aplicación MUST NOT guardar una credencial que no haya superado la verificación.
+La ventana SHALL pedir la credencial en dos pasos: primero el token, que se verifica contra GitHub; después qué vigilar, que se elige de una lista: la cuenta personal del usuario, siempre en primer lugar, y las organizaciones que ese token puede ver. El selector de organización SHALL estar inhabilitado hasta que el token se haya verificado. Elegir una organización SHALL comprobar el acceso a ella antes de habilitar el guardado. La aplicación MUST NOT guardar una credencial que no haya superado las dos comprobaciones.
 
-#### Scenario: Campos iniciales
-- **WHEN** se abre la ventana de ajustes
-- **THEN** la organización aparece rellena y el token vacío y enmascarado, sin revelar el guardado
+#### Scenario: Campos iniciales sin credencial
+- **WHEN** se abre la ventana de ajustes sin token guardado
+- **THEN** el token aparece vacío y enmascarado, con el foco, y el selector de organización aparece inhabilitado
+
+#### Scenario: Campos iniciales con credencial guardada
+- **WHEN** se abre la ventana con un token guardado
+- **THEN** el token aparece vacío y enmascarado sin revelar el guardado, la ventana verifica el guardado por su cuenta para llenar la lista, y la organización configurada aparece seleccionada
 
 #### Scenario: Pegar el token
 - **WHEN** el usuario pega el token con Ctrl+V
@@ -44,16 +48,32 @@ La ventana SHALL permitir cambiar la organización de GitHub y el token. La orga
 - **WHEN** el usuario mira la sección de la credencial
 - **THEN** encuentra los permisos de solo lectura requeridos y un enlace que abre en el navegador la página de GitHub para crear un fine-grained token
 
-#### Scenario: Credencial válida
-- **WHEN** el usuario verifica una organización y un token que funcionan
-- **THEN** la ventana muestra `Conectado como <usuario>` y habilita el guardado
+#### Scenario: Token válido
+- **WHEN** el usuario verifica un token que GitHub acepta
+- **THEN** la ventana muestra `Conectado como <usuario>`, llena el selector con las organizaciones que ve el token, ordenadas por nombre, y lo habilita
+
+#### Scenario: La cuenta personal
+- **WHEN** el usuario elige su cuenta personal y el token ve repositorios suyos
+- **THEN** la ventana lo confirma y habilita el guardado, y el panel pasa a mostrar los pull requests de los repositorios de esa cuenta
+
+#### Scenario: El token no lista organizaciones
+- **WHEN** el token es válido pero ni las organizaciones del usuario ni los repositorios accesibles revelan ninguna
+- **THEN** el selector ofrece la cuenta personal y escribir una organización a mano, y lo indica
+
+#### Scenario: Una organización que no está en la lista
+- **WHEN** la organización buscada no aparece en la lista
+- **THEN** el selector incluye la opción de escribirla a mano
+
+#### Scenario: Elegir una organización
+- **WHEN** el usuario elige una organización y el token tiene acceso a sus repositorios
+- **THEN** la ventana lo confirma y habilita el guardado
 
 #### Scenario: Token rechazado
 - **WHEN** GitHub rechaza el token
-- **THEN** la ventana lo dice, no guarda nada y señala que hay que renovar el token
+- **THEN** la ventana lo dice, el selector sigue inhabilitado, no se guarda nada y se señala que hay que renovar el token
 
 #### Scenario: Sin acceso a la organización
-- **WHEN** el token es válido pero no da acceso a la organización
+- **WHEN** el token es válido pero no da acceso a la organización elegida
 - **THEN** la ventana lo distingue del token inválido e indica que hay que revisar el dueño del token o la aprobación de la organización
 
 #### Scenario: GitHub inalcanzable
@@ -61,12 +81,12 @@ La ventana SHALL permitir cambiar la organización de GitHub y el token. La orga
 - **THEN** la ventana lo distingue de los dos casos anteriores
 
 #### Scenario: La verificación no congela la ventana
-- **WHEN** la verificación está en curso
+- **WHEN** una comprobación está en curso
 - **THEN** la ventana sigue respondiendo, indica que está comprobando y el sondeo no se detiene
 
-#### Scenario: Los campos cambian tras verificar
-- **WHEN** el usuario verifica con éxito y después modifica la organización o el token
-- **THEN** la verificación deja de darse por buena y el guardado de la credencial se inhabilita hasta volver a verificar
+#### Scenario: Cambiar el token tras verificar
+- **WHEN** el usuario verifica con éxito y después modifica el token
+- **THEN** la verificación deja de darse por buena, el selector de organización se inhabilita y el guardado de la credencial también, hasta volver a verificar
 
 #### Scenario: Conservar el token guardado
 - **WHEN** el usuario guarda sin haber escrito ningún token y sin cambiar la organización
@@ -122,7 +142,7 @@ Cuando no haya token en ninguna fuente, la ventana de ajustes SHALL aparecer la 
 
 #### Scenario: Primera vez que se abre el panel
 - **WHEN** el usuario abre el panel y no hay token
-- **THEN** aparece además la ventana de ajustes
+- **THEN** aparece además la ventana de ajustes, con el foco en el token
 
 #### Scenario: No vuelve a insistir
 - **WHEN** el usuario cerró la ventana sin configurar y vuelve a abrir el panel en la misma sesión
@@ -138,7 +158,7 @@ La ventana SHALL ofrecer cerrar sesión, que borra la credencial guardada, solo 
 
 #### Scenario: La ventana queda lista para iniciar sesión de nuevo
 - **WHEN** el usuario cierra sesión
-- **THEN** la ventana sigue abierta, con el token vacío, la verificación anterior descartada y la organización conservada
+- **THEN** la ventana sigue abierta, con el token vacío, la verificación anterior descartada, el selector de organización inhabilitado y la organización configurada conservada en `config.toml`
 
 #### Scenario: Sin credencial no hay sesión que cerrar
 - **WHEN** el usuario abre la ventana y no hay token guardado

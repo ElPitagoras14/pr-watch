@@ -28,9 +28,33 @@ La aplicación SHALL indicar al usuario que cree un *fine-grained personal acces
 - **WHEN** el usuario usa un token clásico con permiso `repo`
 - **THEN** la aplicación funciona igualmente, porque el propio cliente no escribe nunca
 
+### Requirement: Organizaciones que ve el token
+
+El cliente SHALL poder verificar un token por sí solo, sin organización, devolviendo el login del usuario y las organizaciones que el token le deja elegir. Primero SHALL pedir las organizaciones del usuario. Como GitHub responde con una lista vacía a cualquier fine-grained token, si no llega ninguna SHALL deducirlas de los dueños de tipo organización de los repositorios a los que el token tiene acceso, con una petición `GET` que solo necesita el permiso `Metadata`.
+
+#### Scenario: Token con organizaciones
+- **WHEN** GitHub acepta el token y el usuario pertenece a varias organizaciones visibles
+- **THEN** el cliente devuelve el login y la lista de logins de esas organizaciones, ordenada por nombre
+
+#### Scenario: Fine-grained token con una organización como dueña
+- **WHEN** GitHub devuelve la lista de organizaciones vacía, pero el token tiene acceso a repositorios de una organización
+- **THEN** el cliente devuelve esa organización, deducida de los dueños de esos repositorios
+
+#### Scenario: Con organizaciones no se miran repositorios
+- **WHEN** GitHub devuelve organizaciones del usuario
+- **THEN** el cliente no consulta los repositorios
+
+#### Scenario: Token sin organizaciones visibles
+- **WHEN** GitHub acepta el token pero no devuelve organizaciones ni repositorios de ninguna
+- **THEN** el cliente devuelve el login y una lista vacía, sin tratarlo como error
+
+#### Scenario: Token inválido
+- **WHEN** GitHub responde `401`
+- **THEN** el cliente devuelve "credencial inválida"
+
 ### Requirement: Verificación de la credencial
 
-Verificar una credencial SHALL comprobar dos cosas: que GitHub acepta el token, y que con él se puede consultar la organización configurada. El resultado SHALL distinguir token inválido, organización inexistente o inaccesible, y fallo de red.
+Verificar una credencial con su organización SHALL comprobar dos cosas: que GitHub acepta el token, y que con él se puede consultar la organización configurada. El resultado SHALL distinguir token inválido, organización inexistente o inaccesible, y fallo de red.
 
 #### Scenario: Credencial válida
 - **WHEN** GitHub acepta el token y la organización es accesible
@@ -44,9 +68,29 @@ Verificar una credencial SHALL comprobar dos cosas: que GitHub acepta el token, 
 - **WHEN** el token es válido pero la organización no existe o el token no tiene acceso a ella, por ejemplo porque la organización aún no aprobó el token
 - **THEN** la verificación devuelve "sin acceso a la organización", distinto de "credencial inválida", porque lo que tiene que hacer el usuario es distinto
 
+### Requirement: Cuenta personal como ámbito
+
+Además de una organización, el ámbito SHALL poder ser la cuenta personal del usuario del token. En ese caso las búsquedas SHALL filtrar por `user:<login>` en lugar de `org:<nombre>`, y la verificación SHALL comprobar que la cuenta es la del token y que el token ve repositorios suyos.
+
+#### Scenario: La cuenta personal en la lista
+- **WHEN** el cliente devuelve los ámbitos que ve un token
+- **THEN** la cuenta personal del usuario va primero, seguida de las organizaciones
+
+#### Scenario: Búsqueda por cuenta personal
+- **WHEN** el ámbito es la cuenta personal `miusuario`
+- **THEN** las tres búsquedas y los enlaces `Ver todos` usan `user:miusuario`
+
+#### Scenario: Cuenta de otro
+- **WHEN** el ámbito es una cuenta personal distinta de la del token
+- **THEN** la verificación devuelve "sin acceso", porque solo se vigila la propia
+
+#### Scenario: Token sin repositorios personales
+- **WHEN** el token es de una organización y no ve repositorios de la cuenta personal
+- **THEN** la verificación devuelve "sin acceso" e indica que hay que revisar el dueño del token
+
 ### Requirement: Consulta de pull requests por relación
 
-El cliente SHALL obtener los pull requests abiertos de la organización configurada en las tres relaciones del usuario: creados por él (`author:@me`), con su revisión solicitada (`review-requested:@me`, que incluye las solicitudes a equipos suyos) y asignados a él (`assignee:@me`). Cada consulta SHALL traer en la misma respuesta los datos que necesita el modelo neutro: revisiones, checks, conflictos y conversaciones sin resolver.
+El cliente SHALL obtener los pull requests abiertos del ámbito configurado (la organización o la cuenta personal) en las tres relaciones del usuario: creados por él (`author:@me`), con su revisión solicitada (`review-requested:@me`, que incluye las solicitudes a equipos suyos) y asignados a él (`assignee:@me`). Cada consulta SHALL traer en la misma respuesta los datos que necesita el modelo neutro: revisiones, checks, conflictos y conversaciones sin resolver.
 
 #### Scenario: Las tres relaciones
 - **WHEN** se ejecuta un sondeo

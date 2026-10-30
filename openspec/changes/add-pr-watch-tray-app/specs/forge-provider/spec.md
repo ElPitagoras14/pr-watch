@@ -18,7 +18,7 @@ Todo lo que no sea el proveedor —sondeo, estado persistido, novedades, panel, 
 
 ### Requirement: Contrato del proveedor
 
-Un proveedor SHALL ofrecer: verificar una credencial devolviendo la identidad del usuario o un error clasificado; obtener los pull requests abiertos del usuario en sus tres relaciones; consultar el estado actual de pull requests concretos que dejaron de aparecer; y construir la URL web del listado completo de cada bloque.
+Un proveedor SHALL ofrecer: verificar un token por sí solo, devolviendo la identidad del usuario y los ámbitos que puede elegir (en GitHub, organizaciones); verificar una credencial con su ámbito, devolviendo la identidad del usuario o un error clasificado; obtener los pull requests abiertos del usuario en sus tres relaciones; consultar el estado actual de pull requests concretos que dejaron de aparecer; y construir la URL web del listado completo de cada bloque.
 
 Los errores SHALL clasificarse al menos en: credencial inválida, sin acceso al ámbito configurado (por ejemplo la organización), límite de peticiones agotado, y fallo de red o del servidor.
 

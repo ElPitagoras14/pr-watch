@@ -57,6 +57,10 @@ pr_watch/
     github.py          proveedor de GitHub (GraphQL)
     __init__.py        registro {"github": GitHubProvider}
   polling.py           diferencia entre sondeos, novedades, caducidad, purga (puro)
+  poller.py            bucle de sondeo: ritmo, suspension, errores (sin interfaz)
+  inbox.py             novedades sin ver: punto del icono y marcas de fila
+  settings_model.py    datos y validacion de la ventana de ajustes (puro)
+  platform_check.py    bibliotecas de sistema que el binario de Linux necesita
   state_store.py       estado persistido por proveedor, escritura atómica
   view.py              modelo de vista para panel y tooltip (puro)
   notify.py            hechos notificables, deduplicación, emisión
@@ -120,7 +124,7 @@ El alto del panel lo mide JS (`document.body.scrollHeight`) tras cada `render` y
 En Windows: `Shell_NotifyIconGetRect` vía `ctypes` con el `hwnd` y el `uID` del icono de pystray (atributos internos de su backend win32, aislados en `placement.py`). Si falla, se usa la esquina del área de trabajo (`SPI_GETWORKAREA`) del lado de la barra de tareas. En Linux: esquina superior o inferior derecha según el panel del escritorio, o centrado si no puede saberse. Todo en píxeles físicos, teniendo en cuenta el DPI.
 
 ### D10. Icono de bandeja
-`icon.py` dibuja con Pillow a 4× y reduce con LANCZOS: el glifo de pull request (dos nodos con su rama y la flecha de vuelta), en blanco o en `#1f1f1f` según `theme.py` (en Windows lee `SystemUsesLightTheme`; en Linux, blanco). El punto de novedades es un círculo azul `#2f81f7` con borde del color opuesto al glifo, en la esquina superior derecha. Solo se entrega una imagen nueva a pystray cuando cambia la tupla (tema, hay_novedades). `build.py` usa la misma función para generar `pr-watch.ico` (16–256 px) en un directorio temporal antes de llamar a PyInstaller.
+`icon.py` dibuja con Pillow a 4× y reduce con LANCZOS: el glifo de pull request (dos nodos con su rama y la flecha de vuelta), en blanco o en `#1f1f1f` según `theme.py` (en Windows lee `SystemUsesLightTheme`; en Linux, blanco). El punto de novedades es un círculo azul `#2f81f7` en la esquina superior derecha, separado del glifo por un aro transparente recortado, que funciona sobre cualquier color de barra. Solo se entrega una imagen nueva a pystray cuando cambia la tupla (tema, hay_novedades). `build.py` usa la misma función para generar `pr-watch.ico` (16–256 px) en un directorio temporal antes de llamar a PyInstaller.
 
 ### D11. Credencial
 `keyring` con servicio `pr-watch` y usuario `github` (el nombre del proveedor). Si el backend activo es `keyring.backends.fail.Keyring` o falla la escritura, se usa `token-<proveedor>` en el directorio de configuración, creado con `os.open(..., 0o600)` y con aviso. El orden de lectura es: `PR_WATCH_TOKEN`, `.env` del directorio de trabajo, keyring y archivo. El objeto que guarda el token redefine `__repr__` para no mostrarlo.

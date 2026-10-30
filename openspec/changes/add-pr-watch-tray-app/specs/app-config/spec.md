@@ -22,7 +22,7 @@ La configuración SHALL vivir en `config.toml` dentro del directorio de configur
 
 ### Requirement: Claves configurables
 
-La configuración SHALL exponer al menos: el proveedor de forja, la organización de GitHub, el intervalo de sondeo, el tope de pull requests por bloque, los minutos que un pull request fusionado o cerrado permanece visible, y si las notificaciones están activadas.
+La configuración SHALL exponer al menos: el proveedor de forja, la organización de GitHub o en su lugar la cuenta personal (`[github] org` o `[github] user`; si vienen las dos, gana la organización y se avisa), el intervalo de sondeo, el tope de pull requests por bloque, los minutos que un pull request fusionado o cerrado permanece visible, y si las notificaciones están activadas.
 
 Los ajustes propios de cada proveedor SHALL vivir en una tabla con el nombre del proveedor (por ejemplo `[github]`), para que añadir otro proveedor no obligue a renombrar ni mezclar claves.
 
@@ -44,33 +44,41 @@ El tope SHALL llamarse `max_per_block` y SHALL aplicarse a CADA bloque por separ
 - **WHEN** la configuración declara un proveedor que la aplicación no implementa
 - **THEN** la aplicación arranca sin sondear, el tooltip y el panel indican que el proveedor no está soportado, y el archivo no se modifica
 
-### Requirement: Autoarranque con el sistema
+### Requirement: Autoarranque con el sistema, a elección del usuario
 
-La aplicación SHALL registrarse para arrancar con la sesión del usuario en su primera ejecución, sin preguntar.
+La aplicación SHALL arrancar con la sesión del usuario solo si el usuario lo activa, desde la entrada `Arrancar con la sesión` del menú de bandeja. El autoarranque SHALL venir desactivado: la aplicación MUST NOT registrarse por su cuenta. La propia entrada del sistema (la clave `Run` en Windows, el `.desktop` en Linux) SHALL ser la única fuente de verdad de si está activado; no se guarda aparte en `config.toml`.
 
-#### Scenario: Registro en Windows
-- **WHEN** la aplicación corre por primera vez en Windows
-- **THEN** añade una entrada con la orden que la arranca bajo la clave `Run` del usuario actual en el registro
+#### Scenario: Primera ejecución
+- **WHEN** la aplicación corre por primera vez
+- **THEN** no crea ninguna entrada de autoarranque, y la entrada del menú aparece desmarcada
 
-#### Scenario: Registro en Linux
-- **WHEN** la aplicación corre por primera vez en Linux
-- **THEN** escribe un archivo `.desktop` en `~/.config/autostart/`
+#### Scenario: Activar en Windows
+- **WHEN** el usuario activa `Arrancar con la sesión` en Windows
+- **THEN** se añade una entrada con la ruta del ejecutable bajo la clave `Run` del usuario actual, y la entrada del menú aparece marcada
 
-#### Scenario: Registro idempotente
-- **WHEN** la aplicación arranca y ya está registrada para el autoarranque
-- **THEN** no duplica la entrada ni la reescribe innecesariamente
+#### Scenario: Activar en Linux
+- **WHEN** el usuario activa `Arrancar con la sesión` en Linux
+- **THEN** se escribe un archivo `.desktop` en `~/.config/autostart/` que apunta al binario
+
+#### Scenario: Desactivar
+- **WHEN** el usuario desactiva `Arrancar con la sesión`
+- **THEN** se borra la entrada del sistema y la aplicación deja de arrancar con la sesión
+
+#### Scenario: El estado lo dice el sistema
+- **WHEN** el usuario borra la entrada a mano con las herramientas del sistema
+- **THEN** la entrada del menú aparece desmarcada la próxima vez que se abre el menú
 
 #### Scenario: La aplicación cambió de sitio
-- **WHEN** la aplicación arranca desde una ruta distinta a la registrada
-- **THEN** actualiza la entrada de autoarranque para que apunte a la ruta actual
+- **WHEN** el autoarranque está activado y la aplicación arranca desde una ruta distinta a la registrada
+- **THEN** actualiza la entrada para que apunte a la ruta actual, sin duplicarla
 
 #### Scenario: Ejecución desde el código en desarrollo
 - **WHEN** la aplicación corre desde el código fuente y no empaquetada
-- **THEN** no se registra para el autoarranque, para no dejar apuntando la sesión del desarrollador a un intérprete y un directorio de trabajo
+- **THEN** la entrada del menú aparece inhabilitada, para no dejar la sesión del desarrollador apuntando a un intérprete y un directorio de trabajo
 
-#### Scenario: Registro imposible
-- **WHEN** el registro de autoarranque falla por permisos o porque el entorno no lo soporta
-- **THEN** la aplicación avisa una vez y sigue funcionando con normalidad
+#### Scenario: Activación imposible
+- **WHEN** activar o desactivar el autoarranque falla por permisos o porque el entorno no lo soporta
+- **THEN** la aplicación lo registra, la entrada del menú refleja el estado real y la aplicación sigue funcionando con normalidad
 
 ### Requirement: Acceso a la configuración desde la ventana de ajustes
 

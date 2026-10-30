@@ -42,7 +42,7 @@ El panel SHALL seguir el lenguaje visual del popup de usage-monitor-for-claude: 
 
 #### Scenario: Sección de cuenta
 - **WHEN** el panel muestra la sección `CUENTA`
-- **THEN** presenta como pares etiqueta/valor el usuario, el proveedor con su ámbito (por ejemplo `github.com · contoso`) y el estado de la conexión
+- **THEN** presenta como pares etiqueta/valor el usuario, el proveedor con su ámbito (por ejemplo `github.com · contoso`, o `github.com · Cuenta personal` sin repetir el usuario) y el estado de la conexión
 
 #### Scenario: La acción va al extremo del encabezado
 - **WHEN** una sección ofrece una acción sobre toda la lista
@@ -80,7 +80,7 @@ El panel SHALL mostrar los pull requests en dos bloques: `MÍOS` (los creados po
 
 Cada pull request SHALL ocupar dos líneas. La primera: un punto de color de estado, la referencia (`#142`), el título truncado al ancho disponible y, a la derecha, la etiqueta de estado coloreada. La segunda, en gris y más pequeña: en `MÍOS`, el repositorio, el estado de los checks y las conversaciones sin resolver; en `POR REVISAR`, el repositorio, el autor y cuánto hace que se actualizó.
 
-La etiqueta y el color de estado SHALL seguir este orden de prioridad: `conflictos` (rojo), `checks fallidos` (rojo), `cambios pedidos` (ámbar), `fusionado` / `cerrado` (gris), `lista para fusionar` (verde), `aprobado (N)` (verde), `te toca` en `POR REVISAR` si la revisión del usuario sigue pendiente (ámbar), `sin revisar` (ámbar).
+La etiqueta y el color de estado SHALL seguir este orden de prioridad: `fusionado` / `cerrado` (gris), `conflictos` (rojo), `checks fallidos` (rojo), `cambios pedidos` (ámbar), `listo para fusionar` (verde), `aprobado (N)` (verde), `te toca` en `POR REVISAR` si la revisión del usuario sigue pendiente (ámbar), `sin revisar` (ámbar).
 
 #### Scenario: Aprobaciones sin denominador
 - **WHEN** un pull request tiene dos aprobaciones
