@@ -6,3 +6,4 @@ build/
 dist/
 .env
 .codegraph/
+pr_watch/ui/preview/scenarios.json

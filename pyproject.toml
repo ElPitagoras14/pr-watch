@@ -1,0 +1,51 @@
+[project]
+name = "pr-watch"
+version = "0.1.0"
+description = "Vigila los pull requests de GitHub que te involucran desde la bandeja del sistema"
+license = "MIT"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "pywebview==6.2.1",
+    "pystray==0.19.5",
+    "Pillow==13.0.0",
+    "requests==2.34.2",
+    "truststore==0.10.5",
+    "keyring==25.7.0",
+    "tomli-w==1.2.0",
+    "desktop-notifier==6.2.0",
+    # En Linux, pywebview (GTK) y pystray (AppIndicator) hablan con GTK a
+    # traves de PyGObject. Va como dependencia para que PyInstaller lo meta en
+    # el binario; las bibliotecas de GTK/WebKit se toman del sistema (D17).
+    "PyGObject; sys_platform == 'linux'",
+]
+
+[dependency-groups]
+dev = [
+    "pyinstaller==6.22.3",
+    "pyright==1.1.414",
+    "ruff==0.17.3",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+# El formateador ya ajusta el largo; E501 solo protesta por cadenas que no puede partir.
+ignore = ["SIM105", "E501"]
+
+[tool.pyright]
+pythonVersion = "3.13"
+typeCheckingMode = "strict"
+include = ["pr_watch", "tests", "build.py"]
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+reportUnknownParameterType = false
+reportUnknownLambdaType = false
+reportPrivateUsage = false
