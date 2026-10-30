@@ -9,6 +9,7 @@ from pr_watch.credential import Token
 from pr_watch.poller import Health, Poller, Settings, Snapshot
 from pr_watch.polling import Kind, State
 from pr_watch.providers.base import (
+    Descriptor,
     FetchResult,
     Identity,
     Inaccessible,
@@ -29,6 +30,15 @@ TOKEN = Token("github_pat_PRUEBA_0123456789")
 class FakeProvider:
     name = "fake"
     vocabulary = Vocabulary("PR", "#", "fake")
+    instance_key = "fake"
+    descriptor = Descriptor(
+        display_name="Fake",
+        scope_label="Ámbito",
+        scope_placeholder="",
+        token_permissions=("leer",),
+        create_token_url="https://fake/token",
+        configurable_host=False,
+    )
 
     def __init__(self) -> None:
         self.prs: list[PullRequest] = []
@@ -215,6 +225,111 @@ class PollerTest(unittest.TestCase):
         p = Poller(None, settings(), State(), None, self.updates.append, now=self.clock)
         self.assertEqual(p.health, Health.UNSUPPORTED)
         self.assertIsNone(p.next_delay())
+
+
+class RebindTest(unittest.TestCase):
+    """Cambiar de forja sin reiniciar el hilo de sondeo."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        self.vieja = FakeProvider()
+        self.nueva = FakeProvider()
+        self.clock = Clock()
+        self.updates: list[Snapshot] = []
+        self.poller = Poller(
+            self.vieja,
+            settings(),
+            State(),
+            self.root / "state-vieja.json",
+            self.updates.append,
+            now=self.clock,
+        )
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def rebind(self, state: State | None = None) -> None:
+        self.poller.rebind(
+            self.nueva, settings(scope="empresa"), state or State(), self.root / "state-nueva.json"
+        )
+
+    def test_el_estado_de_la_forja_nueva_no_hereda_nada(self) -> None:
+        self.vieja.prs = [make_pr(1)]
+        self.poller.poll_once()
+        self.assertIn("PR_1", self.poller.state.prs)
+        self.rebind()
+        self.assertEqual(self.poller.state.prs, {})
+        self.assertIsNone(self.poller.login)
+        self.assertIsNone(self.poller.last_success)
+
+    def test_sondea_la_nueva_sin_reiniciar(self) -> None:
+        self.poller.poll_once()
+        self.rebind()
+        self.nueva.prs = [make_pr(9)]
+        self.assertTrue(self.poller.poll_once())
+        self.assertEqual(self.vieja.fetches, 1)
+        self.assertEqual(self.nueva.fetches, 1)
+        self.assertIn("PR_9", self.poller.state.prs)
+
+    def test_el_estado_de_la_vieja_se_guarda_antes(self) -> None:
+        self.vieja.prs = [make_pr(1)]
+        self.poller.poll_once()
+        self.poller.save_now()
+        self.rebind()
+        guardado = state_store.load(self.root / "state-vieja.json")
+        self.assertIn("PR_1", guardado.prs)
+
+    def test_volver_a_la_vieja_recupera_su_estado(self) -> None:
+        self.vieja.prs = [make_pr(1)]
+        self.poller.poll_once()
+        self.poller.save_now()
+        self.rebind()
+        vuelta = state_store.load(self.root / "state-vieja.json")
+        self.poller.rebind(self.vieja, settings(), vuelta, self.root / "state-vieja.json")
+        self.assertIn("PR_1", self.poller.state.prs)
+
+    def test_un_sondeo_en_vuelo_no_contamina_la_forja_nueva(self) -> None:
+        self.vieja.prs = [make_pr(1)]
+        self.vieja.gate = threading.Event()
+        hilo = threading.Thread(target=self.poller.poll_once)
+        hilo.start()
+        while self.vieja.fetches == 0:
+            pass
+        # La forja cambia mientras la consulta sigue abierta.
+        self.rebind()
+        self.vieja.gate.set()
+        hilo.join()
+        self.assertEqual(self.poller.state.prs, {})
+        self.assertIsNone(self.poller.last_success)
+
+    def test_un_fallo_en_vuelo_tampoco_marca_la_forja_nueva(self) -> None:
+        self.vieja.gate = threading.Event()
+        self.vieja.error = NetworkError("timeout")
+        hilo = threading.Thread(target=self.poller.poll_once)
+        hilo.start()
+        while self.vieja.fetches == 0:
+            pass
+        self.rebind()
+        self.vieja.gate.set()
+        hilo.join()
+        self.assertEqual(self.poller.health, Health.STARTING)
+        self.assertEqual(self.poller.error, "")
+
+    def test_sin_proveedor_queda_sin_soporte(self) -> None:
+        self.poller.rebind(None, settings(), State(), None)
+        self.assertEqual(self.poller.health, Health.UNSUPPORTED)
+        self.assertFalse(self.poller.poll_once())
+
+
+class RutaDeEstadoTest(unittest.TestCase):
+    def test_un_archivo_por_clave_de_forja(self) -> None:
+        d = Path("/tmp")
+        self.assertEqual(state_store.path_for(d, "github").name, "state-github.json")
+        self.assertNotEqual(
+            state_store.path_for(d, "gitlab@gitlab-com"),
+            state_store.path_for(d, "gitlab@gitlab-empresa-com"),
+        )
 
 
 if __name__ == "__main__":

@@ -1,0 +1,10 @@
+{"data": {"currentUser": {
+  "username": "miusuario",
+  "groups": {
+    "pageInfo": {"hasNextPage": false, "endCursor": "G1"},
+    "nodes": [
+      {"id": "gid://gitlab/Group/44", "fullPath": "empresa"},
+      {"id": "gid://gitlab/Group/77", "fullPath": "empresa/plataforma/red"}
+    ]
+  }
+}}}

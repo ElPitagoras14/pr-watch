@@ -76,9 +76,7 @@ class NotifyTest(unittest.TestCase):
         self.assertEqual(notify.facts(mk(1, relation=Relation.ASSIGNEE, conflicts=True)), set())
 
     def test_llega_algo_a_revisar(self) -> None:
-        _, notes = run(
-            state(mk(1, relation=Relation.REVIEWER, review_pending=True, title="Red"))
-        )
+        _, notes = run(state(mk(1, relation=Relation.REVIEWER, review_pending=True, title="Red")))
         self.assertEqual(len(notes), 1)
         self.assertEqual(notes[0].title, "Te piden revisión")
         self.assertTrue(notes[0].body.startswith("#1 Red"))

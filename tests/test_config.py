@@ -101,5 +101,89 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(config.Config().scope(), "")
 
 
+class GitLabConfigTest(unittest.TestCase):
+    """La tabla `[gitlab]`: host, grupo y espacio personal."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.path = Path(self._tmp.name) / "config.toml"
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def load(self, text: str) -> config.LoadResult:
+        self.path.write_text(text, "utf-8")
+        return config.load(self.path)
+
+    def test_host_por_defecto_es_la_nube(self) -> None:
+        self.assertEqual(config.Config().gitlab.host, "https://gitlab.com")
+
+    def test_sin_host_con_gitlab_activo_avisa_y_usa_la_nube(self) -> None:
+        r = self.load('provider = "gitlab"\n')
+        self.assertEqual(r.config.gitlab.host, "https://gitlab.com")
+        self.assertTrue(any("gitlab.host" in w for w in r.warnings))
+
+    def test_sin_host_con_github_activo_no_avisa(self) -> None:
+        r = self.load('provider = "github"\n')
+        self.assertEqual(r.warnings, [])
+
+    def test_barra_final_y_esquema_implicito(self) -> None:
+        r = self.load('provider = "gitlab"\n[gitlab]\nhost = "gitlab.empresa.com/"\n')
+        self.assertEqual(r.config.gitlab.host, "https://gitlab.empresa.com")
+
+    def test_subdirectorio_se_conserva(self) -> None:
+        r = self.load('[gitlab]\nhost = "https://devops.empresa.com/gitlab/"\n')
+        self.assertEqual(r.config.gitlab.host, "https://devops.empresa.com/gitlab")
+
+    def test_host_invalido_deja_sin_sondear(self) -> None:
+        for malo in ("ftp://gitlab.empresa.com", "http://", "no es una url ni de lejos"):
+            with self.subTest(malo=malo):
+                r = self.load(f'provider = "gitlab"\n[gitlab]\nhost = "{malo}"\n')
+                self.assertEqual(r.config.gitlab.host, "")
+                self.assertTrue(any("no es una direccion" in w for w in r.warnings))
+
+    def test_host_que_no_es_texto(self) -> None:
+        r = self.load("[gitlab]\nhost = 42\n")
+        self.assertEqual(r.config.gitlab.host, "https://gitlab.com")
+        self.assertTrue(r.warnings)
+
+    def test_grupo_y_usuario_a_la_vez_gana_el_grupo(self) -> None:
+        r = self.load('[gitlab]\ngroup = "empresa"\nuser = "miusuario"\n')
+        self.assertEqual(r.config.gitlab.group, "empresa")
+        self.assertEqual(r.config.gitlab.user, "")
+        self.assertTrue(any("a la vez" in w for w in r.warnings))
+
+    def test_ambito_segun_el_proveedor_activo(self) -> None:
+        cfg = config.Config(provider="gitlab")
+        cfg.gitlab.group = "empresa/plataforma"
+        cfg.github.org = "contoso"
+        self.assertEqual(cfg.scope(), "empresa/plataforma")
+        cfg.provider = "github"
+        self.assertEqual(cfg.scope(), "contoso")
+
+    def test_espacio_personal(self) -> None:
+        cfg = config.Config(provider="gitlab").with_scope("user:miusuario")
+        self.assertEqual(cfg.gitlab.user, "miusuario")
+        self.assertEqual(cfg.gitlab.group, "")
+        self.assertEqual(cfg.scope(), "user:miusuario")
+
+    def test_ir_y_volver_conserva_el_ambito_de_la_otra_forja(self) -> None:
+        cfg = config.Config(provider="github").with_scope("contoso")
+        cfg.provider = "gitlab"
+        cfg = cfg.with_scope("empresa")
+        config.save(cfg, self.path)
+        vuelta = config.load(self.path).config
+        self.assertEqual(vuelta.github.org, "contoso")
+        self.assertEqual(vuelta.gitlab.group, "empresa")
+        vuelta.provider = "github"
+        self.assertEqual(vuelta.scope(), "contoso")
+
+    def test_normalize_host(self) -> None:
+        self.assertEqual(config.normalize_host(" gitlab.com "), "https://gitlab.com")
+        self.assertEqual(config.normalize_host("http://localhost:8080"), "http://localhost:8080")
+        self.assertEqual(config.normalize_host("https://x.com?a=1"), "")
+        self.assertEqual(config.normalize_host(""), "")
+
+
 if __name__ == "__main__":
     unittest.main()

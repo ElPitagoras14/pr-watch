@@ -8,11 +8,13 @@ se corrige al extremo mas cercano. Cada correccion deja un aviso.
 from __future__ import annotations
 
 import os
+import re
 import sys
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import tomli_w
 
@@ -43,11 +45,44 @@ def config_dir() -> Path:
 # Prefijo del ambito "cuenta personal": `user:<login>` en lugar de una organizacion.
 PERSONAL_PREFIX = "user:"
 
+DEFAULT_GITLAB_HOST = "https://gitlab.com"
+
+# Nombre de maquina con puerto opcional: nada de espacios ni credenciales.
+_HOST_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?(?::\d{1,5})?$")
+
+
+def normalize_host(value: str) -> str:
+    """Normaliza la direccion de una instancia. Cadena vacia si no sirve.
+
+    Acepta `gitlab.empresa.com` (asume https), recorta la barra final y
+    conserva la ruta cuando la instancia vive en un subdirectorio.
+    """
+    value = value.strip()
+    if not value or any(c.isspace() for c in value):
+        return ""
+    if "://" not in value:
+        value = "https://" + value
+    partes = urlsplit(value)
+    if partes.scheme not in ("http", "https") or not _HOST_RE.match(partes.netloc):
+        return ""
+    if partes.query or partes.fragment:
+        return ""
+    return f"{partes.scheme}://{partes.netloc}{partes.path.rstrip('/')}"
+
 
 @dataclass(slots=True)
 class GitHubSettings:
     # Uno de los dos: la organizacion vigilada o la cuenta personal.
     org: str = ""
+    user: str = ""
+
+
+@dataclass(slots=True)
+class GitLabSettings:
+    # La nube publica o una instancia propia: lo unico que las separa.
+    host: str = DEFAULT_GITLAB_HOST
+    # Uno de los dos: el grupo vigilado (admite subgrupos) o el espacio personal.
+    group: str = ""
     user: str = ""
 
 
@@ -59,27 +94,34 @@ class Config:
     closed_ttl_minutes: int = 15
     notifications: bool = False
     github: GitHubSettings = field(default_factory=GitHubSettings)
+    gitlab: GitLabSettings = field(default_factory=GitLabSettings)
 
     def scope(self) -> str:
-        """El ambito del proveedor activo: en GitHub, la organizacion."""
+        """El ambito del proveedor activo: la organizacion o el grupo."""
         match self.provider:
             case "github":
                 if self.github.user:
                     return PERSONAL_PREFIX + self.github.user
                 return self.github.org
+            case "gitlab":
+                if self.gitlab.user:
+                    return PERSONAL_PREFIX + self.gitlab.user
+                return self.gitlab.group
             case _:
                 return ""
 
     def with_scope(self, scope: str) -> Config:
         nuevo = clone(self)
-        if nuevo.provider == "github":
-            scope = scope.strip()
-            if scope.startswith(PERSONAL_PREFIX):
-                nuevo.github.user = scope.removeprefix(PERSONAL_PREFIX).strip()
-                nuevo.github.org = ""
-            else:
-                nuevo.github.org = scope
-                nuevo.github.user = ""
+        scope = scope.strip()
+        personal = scope.startswith(PERSONAL_PREFIX)
+        propio = scope.removeprefix(PERSONAL_PREFIX).strip() if personal else ""
+        match nuevo.provider:
+            case "github":
+                nuevo.github.user, nuevo.github.org = (propio, "") if personal else ("", scope)
+            case "gitlab":
+                nuevo.gitlab.user, nuevo.gitlab.group = (propio, "") if personal else ("", scope)
+            case _:
+                pass
         return nuevo
 
 
@@ -103,7 +145,10 @@ def to_dict(cfg: Config) -> dict[str, Any]:
         "max_per_block": cfg.max_per_block,
         "closed_ttl_minutes": cfg.closed_ttl_minutes,
         "notifications": cfg.notifications,
+        # Las dos tablas se escriben siempre: cambiar de forja y volver no
+        # obliga a reconfigurar el ambito de la anterior.
         "github": {"org": cfg.github.org, "user": cfg.github.user},
+        "gitlab": {"host": cfg.gitlab.host, "group": cfg.gitlab.group, "user": cfg.gitlab.user},
     }
 
 
@@ -167,7 +212,42 @@ def from_dict(data: dict[str, Any]) -> tuple[Config, list[str]]:
     else:
         warnings.append("`[github]` no es una tabla; se ignora")
 
+    gitlab = data.get("gitlab", {})
+    if isinstance(gitlab, dict):
+        cfg.gitlab.host = _gitlab_host(gitlab, cfg.provider, warnings)
+        for key in ("group", "user"):
+            value = gitlab.get(key, "")
+            if isinstance(value, str):
+                setattr(cfg.gitlab, key, value.strip().strip("/"))
+            else:
+                warnings.append(f"`gitlab.{key}` no es texto; se ignora")
+        if cfg.gitlab.group and cfg.gitlab.user:
+            warnings.append("`gitlab.group` y `gitlab.user` a la vez: se usa el grupo")
+            cfg.gitlab.user = ""
+    else:
+        warnings.append("`[gitlab]` no es una tabla; se ignora")
+
     return cfg, warnings
+
+
+def _gitlab_host(gitlab: dict[str, Any], provider: str, warnings: list[str]) -> str:
+    """El host de la instancia. Cadena vacia = declarado pero inservible.
+
+    Que falte es normal y se resuelve con la nube publica; que este mal no:
+    con una direccion sin sentido no se sondea, en lugar de pedir a ciegas.
+    """
+    raw = gitlab.get("host", "")
+    if not isinstance(raw, str):
+        warnings.append("`gitlab.host` no es texto; se usa " + DEFAULT_GITLAB_HOST)
+        return DEFAULT_GITLAB_HOST
+    if not raw.strip():
+        if provider == "gitlab":
+            warnings.append("`gitlab.host` sin declarar; se usa " + DEFAULT_GITLAB_HOST)
+        return DEFAULT_GITLAB_HOST
+    host = normalize_host(raw)
+    if not host:
+        warnings.append(f"`gitlab.host` = {raw!r} no es una direccion utilizable; no se sondeara")
+    return host
 
 
 def load(path: Path) -> LoadResult:

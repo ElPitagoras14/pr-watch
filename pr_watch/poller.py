@@ -88,6 +88,9 @@ class Poller:
         self._wake = threading.Event()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        # Sube con cada cambio de forja: un sondeo que estaba en vuelo cuando
+        # se cambio no debe escribir su resultado sobre el estado del nuevo.
+        self._generation = 0
 
     # ---- estado para la interfaz ----
 
@@ -157,6 +160,32 @@ class Poller:
         self.on_update(self.snapshot())
         self._wake.set()
 
+    def rebind(
+        self,
+        provider: Provider | None,
+        settings: Settings,
+        state: State,
+        state_path: Path | None,
+    ) -> None:
+        """Cambia de forja sin reiniciar el hilo de sondeo.
+
+        Quien llama es responsable de haber persistido antes el estado de la
+        forja que se abandona: aqui ya se sustituye.
+        """
+        with self._settings_lock:
+            self._generation += 1
+            self.provider = provider
+            self.settings = settings
+            self.state = polling.expire(state, now=self.now(), ttl=settings.ttl)
+            self.state_path = state_path
+            self.login = None
+            self.last_success = None
+            self.suspended_until = None
+            self.error = ""
+            self.health = self._idle_health()
+        self.on_update(self.snapshot())
+        self._wake.set()
+
     # ---- bucle ----
 
     def next_delay(self) -> float | None:
@@ -183,21 +212,31 @@ class Poller:
         try:
             with self._settings_lock:
                 settings = self.settings
-            provider = self.provider
+                generation = self._generation
+                provider = self.provider
             if provider is None or settings.token is None or not settings.scope:
                 self.health = self._idle_health()
                 self.on_update(self.snapshot())
                 return False
             if self.is_suspended():
                 return False
-            novelties, notices = self._poll(provider, settings, settings.token)
+            novelties, notices = self._poll(provider, settings, settings.token, generation)
+            if generation != self._generation:
+                return False
             self.on_update(self.snapshot(novelties, notices))
             return True
         finally:
             self._poll_lock.release()
 
+    def _stale(self, generation: int) -> bool:
+        """La forja cambio mientras este sondeo estaba en vuelo."""
+        if generation == self._generation:
+            return False
+        _log.info("Sondeo descartado: la forja cambio mientras se consultaba")
+        return True
+
     def _poll(
-        self, provider: Provider, settings: Settings, token: Token
+        self, provider: Provider, settings: Settings, token: Token, generation: int
     ) -> tuple[list[Novelty], list[notify.Notice]]:
         try:
             if self.login is None:
@@ -206,27 +245,37 @@ class Poller:
             missing = polling.missing_ids(self.state, result) if result.complete else []
             missing_states = provider.fetch_states(missing, token) if missing else {}
         except RateLimited as e:
+            if self._stale(generation):
+                return [], []
             self.suspended_until = e.reset_at
             self.health = Health.RATE_LIMITED
             self.error = str(e)
             _log.warning("Limite de peticiones agotado hasta %s", e.reset_at.isoformat())
             return [], []
         except InvalidCredential as e:
+            if self._stale(generation):
+                return [], []
             self.health = Health.INVALID_CREDENTIAL
             self.error = str(e)
             _log.warning("Credencial rechazada: %s", e)
             return [], []
         except ScopeInaccessible as e:
+            if self._stale(generation):
+                return [], []
             self.health = Health.SCOPE_INACCESSIBLE
             self.error = str(e)
             _log.warning("Ambito inaccesible: %s", e)
             return [], []
         except ProviderError as e:
+            if self._stale(generation):
+                return [], []
             self.health = Health.STALE
             self.error = str(e) or type(e).__name__
             _log.warning("Sondeo fallido: %s", self.error)
             return [], []
 
+        if self._stale(generation):
+            return [], []
         if result.errors:
             _log.warning("Sondeo incompleto: %s", "; ".join(result.errors))
         now = self.now()

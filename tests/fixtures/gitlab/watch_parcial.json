@@ -1,0 +1,66 @@
+{
+ "data": {
+  "queryComplexity": {
+   "score": 169,
+   "limit": 250
+  },
+  "currentUser": {
+   "username": "miusuario",
+   "autor": {
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": null
+    },
+    "nodes": [
+     {
+      "id": "gid://gitlab/MergeRequest/101",
+      "iid": "101",
+      "title": "MR 101",
+      "webUrl": "https://gitlab.empresa.com/empresa/plataforma/-/merge_requests/101",
+      "state": "opened",
+      "draft": false,
+      "updatedAt": "2026-10-20T12:00:32-05:00",
+      "conflicts": false,
+      "mergeStatusEnum": "CAN_BE_MERGED",
+      "approved": false,
+      "resolvableDiscussionsCount": 0,
+      "resolvedDiscussionsCount": 0,
+      "project": {
+       "fullPath": "empresa/plataforma"
+      },
+      "author": {
+       "username": "miusuario"
+      },
+      "approvedBy": {
+       "nodes": []
+      },
+      "reviewers": {
+       "nodes": []
+      },
+      "headPipeline": null
+     }
+    ]
+   },
+   "asignado": {
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": null
+    },
+    "nodes": []
+   },
+   "revisor": null
+  }
+ },
+ "errors": [
+  {
+   "message": "Timeout on revisor",
+   "path": [
+    "currentUser",
+    "revisor"
+   ],
+   "extensions": {
+    "code": "timeout"
+   }
+  }
+ ]
+}

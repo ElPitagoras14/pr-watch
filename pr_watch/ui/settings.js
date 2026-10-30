@@ -1,5 +1,5 @@
-// Ajustes: primero el token, despues la organizacion elegida de una lista.
-// El token guardado nunca llega aqui; solo se sabe si existe.
+// Ajustes: primero la forja, despues el token y despues el ambito elegido de
+// una lista. El token guardado nunca llega aqui; solo se sabe si existe.
 "use strict";
 
 (function () {
@@ -9,9 +9,26 @@
 
   let vm = null;
   let tokenOk = false; // el token (escrito o guardado) paso el paso 1
-  let verified = false; // la organizacion elegida paso el paso 2
+  let verified = false; // el ambito elegido paso el paso 2
   let busy = false;
   let check = 0; // descarta respuestas de comprobaciones ya superadas
+
+  // La forja seleccionada en la ventana, que puede no ser la activa todavia.
+  function forge() {
+    return { provider: $("provider").value, host: $("host").value.trim() };
+  }
+
+  // Como se describe la forja seleccionada: ambito, permisos, sustantivo.
+  function card() {
+    const sel = $("provider").value;
+    return (vm.providers || []).find((p) => p.value === sel) || {};
+  }
+
+  function forgeChanged() {
+    const f = forge();
+    if (f.provider !== vm.provider) return true;
+    return !!card().needs_host && f.host !== vm.host;
+  }
 
   function currentScope() {
     const sel = $("scope-select");
@@ -20,16 +37,17 @@
   }
 
   function credentialChanged() {
-    return $("token").value.trim() !== "" || currentScope() !== vm.scope;
+    return $("token").value.trim() !== "" || currentScope() !== vm.scope || forgeChanged();
   }
 
   function refresh() {
     const needsVerify = credentialChanged() || !vm.has_token;
     $("btn-save").disabled = busy || (needsVerify && !verified) || currentScope() === "";
-    $("btn-verify").disabled = busy || ($("token").value.trim() === "" && !vm.has_token);
+    $("btn-verify").disabled = busy;
     $("scope-select").disabled = busy || !tokenOk;
     $("scope-manual").disabled = busy || !tokenOk;
     $("scope-manual").hidden = $("scope-select").value !== MANUAL;
+    $("host-field").hidden = !card().needs_host;
   }
 
   function setStatus(id, text, tone) {
@@ -39,26 +57,32 @@
   }
 
   function errorText(r) {
-    return {
-      invalid: "GitHub rechazó el token: hay que renovarlo.",
-      scope: "Sin acceso a la organización: " + (r.message || "") +
-        ". Revisa el dueño del token o si la organización ya lo aprobó.",
-      network: "No se pudo conectar con GitHub: " + (r.message || "red") + ".",
-      rate: "Límite de peticiones de GitHub agotado; inténtalo más tarde.",
-    }[r.kind] || r.message || "No se pudo verificar.";
+    const forja = card().label || "la forja";
+    const ambito = (card().scope_label || "ámbito").toLowerCase();
+    return (
+      {
+        invalid: forja + " rechazó el token: hay que renovarlo.",
+        scope: "Sin acceso al " + ambito + ": " + (r.message || "") + ".",
+        network: "No se pudo conectar con " + forja + ": " + (r.message || "red") + ".",
+        rate: "Límite de peticiones agotado; inténtalo más tarde.",
+      }[r.kind] ||
+      r.message ||
+      "No se pudo verificar."
+    );
   }
 
-  // scopes: [{value, label}]. La cuenta personal llega primero, como
-  // `user:<login>`; el resto son organizaciones.
+  // scopes: [{value, label}]. El ambito personal llega primero, como
+  // `user:<login>`; el resto son organizaciones o grupos.
   function fillScopes(scopes, preferred, preferredLabel) {
     const sel = $("scope-select");
     const list = scopes.slice();
     if (preferred && !list.some((s) => s.value === preferred)) {
       list.push({ value: preferred, label: preferredLabel || preferred });
     }
-    const opts = [el("option", { value: "" }, list.length ? "Elige cuenta u organización" : "—")];
+    const vacio = list.length ? "Elige " + (card().scope_label || "ámbito").toLowerCase() : "—";
+    const opts = [el("option", { value: "" }, vacio)];
     for (const s of list) opts.push(el("option", { value: s.value }, s.label));
-    opts.push(el("option", { value: MANUAL }, "Otra organización (escribir a mano)…"));
+    opts.push(el("option", { value: MANUAL }, "Otro (escribir a mano)…"));
     sel.replaceChildren(...opts);
     sel.value = preferred || "";
   }
@@ -72,6 +96,28 @@
     setStatus("scope-status", "");
   }
 
+  // Las etiquetas salen de la forja seleccionada, no de la activa: elegir
+  // GitLab en el desplegable ya cambia los textos, sin guardar nada.
+  function applyCard() {
+    const c = card();
+    $("scope-label").textContent = c.scope_label || "Ámbito";
+    $("scope-manual").placeholder = c.scope_placeholder || "";
+    $("perms").textContent = (c.permissions || []).join(", ");
+    $("per-block-label").textContent = "Máximo de " + (c.noun || "PR") + " por bloque";
+    $("create-token").textContent = "Crear token en " + (c.label || "la forja");
+  }
+
+  // Cambiar de forja invalida lo verificado: otro servidor, otro token.
+  function forgeSwitched() {
+    check++;
+    busy = false;
+    resetScope();
+    applyCard();
+    setStatus("verify-status", "");
+    setStatus("save-status", "");
+    refresh();
+  }
+
   // ---- paso 1: el token ----
 
   async function verifyToken() {
@@ -83,7 +129,8 @@
     setStatus("verify-status", "Comprobando…");
     setStatus("scope-status", "");
     const token = $("token").value.trim();
-    const r = (await api().settings_verify_token(token)) || {};
+    const f = forge();
+    const r = (await api().settings_verify_token(f, token)) || {};
     if (id !== check) return;
     busy = false;
     if (token !== $("token").value.trim()) {
@@ -92,7 +139,13 @@
       return;
     }
     if (!r.ok) {
-      setStatus("verify-status", errorText(r), "red");
+      // Que aun no haya token para esa forja no es un error que pintar.
+      if (r.missing) {
+        setStatus("verify-status", "");
+        $("token").focus();
+      } else {
+        setStatus("verify-status", errorText(r), "red");
+      }
       refresh();
       return;
     }
@@ -100,14 +153,16 @@
     setStatus("verify-status", "Conectado como " + r.login, "green");
     const scopes = r.scopes || [];
     // Antes de reescribir la lista, lo que el usuario ya tuviera elegido.
-    const preferred = currentScope() || vm.scope;
+    const mismaForja = !forgeChanged();
+    const preferred = currentScope() || (mismaForja ? vm.scope : "");
     fillScopes(scopes, preferred, preferred === vm.scope ? vm.scope_display : "");
-    const orgs = scopes.filter((s) => !s.value.startsWith("user:"));
-    if (orgs.length === 0) {
+    const propios = scopes.filter((s) => !s.value.startsWith("user:"));
+    if (propios.length === 0) {
       setStatus(
         "scope-status",
-        "El token no ve ninguna organización: elige tu cuenta personal o escribe una " +
-          "organización con «Otra…».",
+        "El token no ve ningún " +
+          (card().scope_label || "ámbito").toLowerCase() +
+          ": elige tu espacio personal o escríbelo con «Otro…».",
         "amber",
       );
     }
@@ -116,7 +171,7 @@
     else $("scope-select").focus();
   }
 
-  // ---- paso 2: la organizacion ----
+  // ---- paso 2: el ambito ----
 
   async function verifyScope() {
     const scope = currentScope();
@@ -131,7 +186,7 @@
     refresh();
     setStatus("scope-status", "Comprobando acceso…");
     const token = $("token").value.trim();
-    const r = (await api().settings_verify(scope, token)) || {};
+    const r = (await api().settings_verify(forge(), scope, token)) || {};
     if (id !== check) return;
     busy = false;
     if (scope !== currentScope() || token !== $("token").value.trim()) {
@@ -152,17 +207,25 @@
 
   // ---- carga ----
 
+  function fillProviders() {
+    const sel = $("provider");
+    sel.replaceChildren(
+      ...(vm.providers || []).map((p) => el("option", { value: p.value }, p.label)),
+    );
+    sel.value = vm.provider;
+  }
+
   function fill(data) {
     vm = data;
     check++;
     busy = false;
-    $("provider").textContent = vm.provider;
-    $("scope-label").textContent = vm.scope_label;
+    fillProviders();
+    $("host").value = vm.host || "";
+    applyCard();
     $("token").value = "";
     $("token").placeholder = vm.has_token
       ? "Guardado · escribe uno nuevo para cambiarlo"
       : "Pega aquí el token";
-    $("perms").textContent = vm.permissions.join(", ");
     $("interval").value = vm.poll_interval_secs;
     $("interval").min = vm.min_interval_secs;
     $("per-block").value = vm.max_per_block;
@@ -170,6 +233,7 @@
     $("per-block").max = vm.max_per_block_limit;
     $("notifications").checked = !!vm.notifications;
     $("logout-line").style.display = vm.has_token ? "" : "none";
+    $("create-token").hidden = !vm.has_create_token_url;
     $("plaintext").replaceChildren(
       vm.plaintext_warning ? el("div", { class: "warn" }, vm.plaintext_warning) : "",
     );
@@ -177,7 +241,7 @@
     setStatus("save-status", "");
     $("notes").textContent = "";
     resetScope();
-    // Con la organizacion configurada pero sin lista todavia, se muestra sola.
+    // Con el ambito configurado pero sin lista todavia, se muestra solo.
     if (vm.scope) fillScopes([], vm.scope, vm.scope_display);
     refresh();
     if (vm.has_token) verifyToken(); // con lo guardado, sin escribir nada
@@ -199,13 +263,17 @@
     busy = true;
     refresh();
     setStatus("save-status", "Guardando…");
-    const r = (await api().settings_save({
-      scope: currentScope(),
-      token: $("token").value.trim(),
-      poll_interval_secs: parseInt($("interval").value, 10),
-      max_per_block: parseInt($("per-block").value, 10),
-      notifications: $("notifications").checked,
-    })) || {};
+    const f = forge();
+    const r =
+      (await api().settings_save({
+        provider: f.provider,
+        host: f.host,
+        scope: currentScope(),
+        token: $("token").value.trim(),
+        poll_interval_secs: parseInt($("interval").value, 10),
+        max_per_block: parseInt($("per-block").value, 10),
+        notifications: $("notifications").checked,
+      })) || {};
     busy = false;
     if (!r.ok) {
       setStatus("save-status", r.error || "No se pudo guardar.", "red");
@@ -219,6 +287,15 @@
     fill(data || Object.assign({}, vm, { has_token: false, plaintext_warning: null }));
   }
 
+  $("provider").addEventListener("change", () => {
+    forgeSwitched();
+    verifyToken(); // por si esa forja ya tiene token guardado
+  });
+  $("host").addEventListener("input", forgeSwitched);
+  $("host").addEventListener("change", () => {
+    forgeSwitched();
+    if ($("host").value.trim()) verifyToken();
+  });
   $("token").addEventListener("input", () => {
     check++;
     busy = false;
@@ -252,20 +329,30 @@
     if (e.key === "Enter") verifyScope();
   });
   $("interval").addEventListener("change", () =>
-    clampNumber("interval", vm.min_interval_secs, 86400,
-      (c) => "El intervalo mínimo es " + vm.min_interval_secs + " s; se usa " + c + "."),
+    clampNumber(
+      "interval",
+      vm.min_interval_secs,
+      86400,
+      (c) => "El intervalo mínimo es " + vm.min_interval_secs + " s; se usa " + c + ".",
+    ),
   );
   $("per-block").addEventListener("change", () =>
-    clampNumber("per-block", vm.min_per_block, vm.max_per_block_limit,
-      (c) => "El tope va de " + vm.min_per_block + " a " + vm.max_per_block_limit +
-        "; se usa " + c + "."),
+    clampNumber(
+      "per-block",
+      vm.min_per_block,
+      vm.max_per_block_limit,
+      (c) =>
+        "El tope va de " + vm.min_per_block + " a " + vm.max_per_block_limit + "; se usa " + c + ".",
+    ),
   );
   $("btn-verify").addEventListener("click", verifyToken);
   $("btn-save").addEventListener("click", save);
   $("btn-cancel").addEventListener("click", () => api().settings_close());
   $("btn-close").addEventListener("click", () => api().settings_close());
   $("btn-logout").addEventListener("click", logout);
-  $("create-token").addEventListener("click", () => api().open_url(vm.create_token_url));
+  // La URL la construye Python desde la forja seleccionada: desde aqui no
+  // sale ninguna direccion.
+  $("create-token").addEventListener("click", () => api().open_create_token(forge()));
   $("open-config").addEventListener("click", () => api().open_config_file());
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") api().settings_close();

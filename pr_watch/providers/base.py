@@ -94,6 +94,24 @@ class Vocabulary:
     host_label: str  # "github.com"
 
 
+@dataclass(frozen=True, slots=True)
+class Descriptor:
+    """Lo que la ventana de ajustes necesita saber de la forja activa.
+
+    Sin esto la ventana tendria que nombrar a GitHub a fuego: los permisos que
+    pedir, donde se crea el token y como se llama el ambito cambian con cada
+    forja.
+    """
+
+    display_name: str  # "GitHub", "GitLab"
+    scope_label: str  # "Cuenta u organizacion", "Grupo o espacio personal"
+    scope_placeholder: str  # que poner cuando el ambito se escribe a mano
+    token_permissions: tuple[str, ...]  # permisos de solo lectura a pedir
+    create_token_url: str
+    # True si la forja vive en varias instancias y el host se configura.
+    configurable_host: bool
+
+
 # ---- errores clasificados ----
 
 
@@ -122,6 +140,19 @@ class NetworkError(ProviderError):
 class Provider(Protocol):
     name: str
     vocabulary: Vocabulary
+
+    @property
+    def instance_key(self) -> str:
+        """Clave con la que se guardan credencial y estado de esta forja.
+
+        Una forja de instancia unica devuelve su nombre (`github`); una que
+        vive en varias instancias lo compone con la suya
+        (`gitlab@gitlab-telconet-ec`), para que dos instancias no se pisen.
+        """
+        ...
+
+    @property
+    def descriptor(self) -> Descriptor: ...
 
     def list_scopes(self, token: Token) -> ScopeList: ...
 

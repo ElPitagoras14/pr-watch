@@ -1,0 +1,46 @@
+{
+ "data": {
+  "queryComplexity": {
+   "score": 169,
+   "limit": 250
+  },
+  "currentUser": {
+   "username": "miusuario",
+   "autor": {
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": null
+    },
+    "nodes": [
+     {
+      "id": "gid://gitlab/MergeRequest/104",
+      "iid": "104",
+      "title": "MR 104",
+      "webUrl": "https://gitlab.empresa.com/empresa/plataforma/-/merge_requests/104",
+      "state": "opened",
+      "draft": false,
+      "updatedAt": "2026-10-20T12:00:32-05:00",
+      "conflicts": false,
+      "mergeStatusEnum": "CAN_BE_MERGED",
+      "approved": false,
+      "resolvableDiscussionsCount": 0,
+      "resolvedDiscussionsCount": 0,
+      "project": {
+       "fullPath": "empresa/plataforma/red"
+      },
+      "author": {
+       "username": "miusuario"
+      },
+      "approvedBy": {
+       "nodes": []
+      },
+      "reviewers": {
+       "nodes": []
+      },
+      "headPipeline": null
+     }
+    ]
+   }
+  }
+ }
+}

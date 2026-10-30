@@ -1,0 +1,5 @@
+{"data": {
+  "m0": {"id": "gid://gitlab/MergeRequest/1", "state": "merged"},
+  "m1": {"id": "gid://gitlab/MergeRequest/2", "state": "closed"},
+  "m2": null
+}}

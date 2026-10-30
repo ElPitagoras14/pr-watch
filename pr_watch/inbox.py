@@ -41,3 +41,9 @@ class Inbox:
     def unseen_ids(self) -> set[str]:
         with self._lock:
             return set(self.marks)
+
+    def reset(self) -> None:
+        """Al cambiar de forja: lo de la anterior ya no es novedad de nadie."""
+        with self._lock:
+            self.count = 0
+            self.marks.clear()

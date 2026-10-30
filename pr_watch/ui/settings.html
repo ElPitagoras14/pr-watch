@@ -21,15 +21,22 @@
       </div>
 
       <div class="sec"><span>CONEXIÓN</span></div>
-      <div class="kv"><span class="k">Proveedor</span><span class="v" id="provider"></span></div>
+      <label class="field inline">
+        <span class="k">Proveedor</span>
+        <select id="provider"></select>
+      </label>
+      <label class="field" id="host-field">
+        <span class="k">Instancia</span>
+        <input id="host" type="text" autocomplete="off" spellcheck="false"
+               placeholder="https://gitlab.com" />
+      </label>
       <label class="field">
         <span class="k">Token</span>
         <input id="token" type="password" autocomplete="off" spellcheck="false" />
       </label>
       <p class="help">
-        Un <em>fine-grained token</em> con tu cuenta o la organización como dueña y solo
-        permisos de lectura: <span id="perms"></span>.
-        <a id="create-token">Crear token en GitHub</a>
+        Un token de solo lectura con <span id="perms"></span>.
+        <a id="create-token">Crear token</a>
       </p>
       <div id="plaintext"></div>
       <div class="line">
@@ -54,7 +61,7 @@
         <input id="interval" type="number" step="1" />
       </label>
       <label class="field inline">
-        <span class="k">Máximo de PR por bloque</span>
+        <span class="k"><span id="per-block-label">Máximo de PR por bloque</span></span>
         <input id="per-block" type="number" step="1" />
       </label>
       <label class="field inline check">
