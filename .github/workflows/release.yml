@@ -96,24 +96,38 @@ jobs:
   build-linux:
     name: build (linux)
     needs: [check-version, verify]
-    # Fijo, no ubuntu-latest: el runner decide contra que glibc queda enlazado
-    # el binario, y con el la distribucion mas antigua que lo puede ejecutar.
     runs-on: ubuntu-24.04
+    # La glibc del binario la fija esta imagen, no el runner: el binario corre en
+    # cualquier sistema con una glibc igual o mas nueva que la de aqui, asi que este
+    # es el piso. Debe coincidir con MIN_GLIBC de pr_watch/platform_check.py, y
+    # smoke-linux lo comprueba. Una imagen y no `runs-on: ubuntu-22.04`, porque ese
+    # runner se retira antes que la imagen.
+    container: ubuntu:22.04
+    env:
+      DEBIAN_FRONTEND: noninteractive
     steps:
-      - uses: actions/checkout@v7
-
-      # pygobject y pycairo estan en el bloqueo como sdist: hay que compilarlos.
-      # Los paquetes gir1.2-* son los mismos que el README pide al usuario final.
+      # Antes del checkout: sin git la accion baja un tarball en vez de clonar.
+      # pygobject (serie 3.50, girepository-1.0) y pycairo estan en el bloqueo como
+      # sdist: hay que compilarlos. Los paquetes gir1.2-* son los mismos que el
+      # README pide al usuario final.
       - name: Dependencias del sistema
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libgirepository-2.0-dev \
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential \
+            ca-certificates \
+            curl \
+            git \
+            libgirepository1.0-dev \
             libcairo2-dev \
             pkg-config \
             gir1.2-gtk-3.0 \
             gir1.2-webkit2-4.1 \
-            gir1.2-ayatanaappindicator3-0.1             xvfb
+            gir1.2-ayatanaappindicator3-0.1 \
+            xauth \
+            xvfb
+
+      - uses: actions/checkout@v7
 
       # Version exacta: setup-uv no publica un tag mayor movil como actions/*.
       - uses: astral-sh/setup-uv@v10.3.3
@@ -145,9 +159,52 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  # Ejecuta el binario recien construido en distribuciones limpias, solo con los
+  # paquetes de ejecucion que pide el README: sin las cabeceras -dev que si hay en
+  # build-linux. Si no arranca en el piso de glibc o en la mas reciente, no hay tag.
+  smoke-linux:
+    name: smoke (${{ matrix.image }})
+    needs: [check-version, build-linux]
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22.04: el piso de glibc. 12: la distribucion con la que fallo la 0.1.4.
+        # 13: la mas reciente con glib >= 2.80, donde no existe girepository-1.0.
+        image: ["ubuntu:22.04", "debian:12", "debian:13"]
+    container: ${{ matrix.image }}
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Dependencias de ejecucion
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates \
+            gir1.2-gtk-3.0 \
+            gir1.2-webkit2-4.1 \
+            gir1.2-ayatanaappindicator3-0.1 \
+            xauth \
+            xvfb
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: pr-watch-linux
+          path: artefactos
+
+      # --check-system sale con 0 si las bibliotecas estan completas, o con 1 y un
+      # mensaje que dice que falta. No abre la bandeja ni toma la instancia unica.
+      - name: Arrancar el binario
+        env:
+          VERSION: ${{ needs.check-version.outputs.version }}
+        run: |
+          ldd --version | head -1
+          chmod +x "artefactos/pr-watch-$VERSION-linux"
+          xvfb-run -a "artefactos/pr-watch-$VERSION-linux" --check-system
+
   tag:
     name: tag
-    needs: [check-version, build-windows, build-linux]
+    needs: [check-version, build-windows, build-linux, smoke-linux]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -203,11 +260,13 @@ jobs:
 
           **Windows**: descarga `pr-watch-<version>-windows.exe` y ejecutalo. Es portable: no hay instalador ni hace falta Python.
 
-          **Linux**: descarga `pr-watch-<version>-linux`, dale permiso de ejecucion (`chmod +x pr-watch-<version>-linux`) y ejecutalo. Se construye en Ubuntu 24.04 y lleva dentro su propio glib, asi que del sistema necesita glibc 2.38 o mas nueva (Ubuntu 23.10+, Debian 13+, Fedora 39+), mas GTK, WebKit y el indicador de bandeja:
+          **Linux**: descarga `pr-watch-<version>-linux`, dale permiso de ejecucion (`chmod +x pr-watch-<version>-linux`) y ejecutalo. Se construye en Ubuntu 22.04 y lleva dentro Python y sus dependencias, asi que del sistema necesita glibc 2.35 o mas nueva (Ubuntu 22.04+, Debian 12+, Linux Mint 21+, Fedora 36+), mas GTK, WebKit y el indicador de bandeja:
 
           ```
           sudo apt install gir1.2-gtk-3.0 gir1.2-webkit2-4.1 gir1.2-ayatanaappindicator3-0.1
           ```
+
+          Para comprobar que tu sistema tiene todo sin abrir la aplicacion: `./pr-watch-<version>-linux --check-system`. Si algo falta, dice que.
           FIN
           cat notas.md
 

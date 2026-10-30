@@ -337,7 +337,7 @@ wheels = [
 
 [[package]]
 name = "pr-watch"
-version = "0.1.4"
+version = "0.1.5"
 source = { virtual = "." }
 dependencies = [
     { name = "desktop-notifier" },
@@ -363,7 +363,7 @@ requires-dist = [
     { name = "desktop-notifier", specifier = "==6.2.0" },
     { name = "keyring", specifier = "==25.7.0" },
     { name = "pillow", specifier = "==13.0.0" },
-    { name = "pygobject", marker = "sys_platform == 'linux'" },
+    { name = "pygobject", marker = "sys_platform == 'linux'", specifier = ">=3.50,<3.51" },
     { name = "pystray", specifier = "==0.19.5" },
     { name = "pywebview", specifier = "==6.2.1" },
     { name = "requests", specifier = "==2.34.2" },
@@ -401,12 +401,12 @@ wheels = [
 
 [[package]]
 name = "pygobject"
-version = "3.58.1"
+version = "3.50.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pycairo" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/65/1e/d590f82e14db75945b03f6b63e0f19662e0340babd8f574fdb1bb5a015e2/pygobject-3.58.1.tar.gz", hash = "sha256:4c80598ade17fbaa7798e01a25d0bf29ce109740786026a074c5c62bb3e79d23", size = 1408671, upload-time = "2026-10-09T11:29:48.929Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a7/5d/f2946cc6c1baf56dee6e942af8cfa16472538a8ad9d780d9f484e7554288/pygobject-3.50.2.tar.gz", hash = "sha256:ece6b860aab77cb649fdfc6e88d8a83765e7a62f7ffd39a628d6e2a0d397a7ff", size = 1085854, upload-time = "2025-10-18T13:44:45.634Z" }
 
 [[package]]
 name = "pyinstaller"

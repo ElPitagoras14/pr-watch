@@ -1,6 +1,6 @@
 [project]
 name = "pr-watch"
-version = "0.1.4"
+version = "0.1.5"
 description = "Vigila los pull requests de GitHub que te involucran desde la bandeja del sistema"
 license = "MIT"
 requires-python = ">=3.13,<3.14"
@@ -16,7 +16,9 @@ dependencies = [
     # En Linux, pywebview (GTK) y pystray (AppIndicator) hablan con GTK a
     # traves de PyGObject. Va como dependencia para que PyInstaller lo meta en
     # el binario; las bibliotecas de GTK/WebKit se toman del sistema (D17).
-    "PyGObject; sys_platform == 'linux'",
+    # Serie 3.50: la ultima que compila contra girepository-1.0 (glib < 2.80),
+    # que es lo que fija el piso de glibc del binario en 2.35.
+    "PyGObject>=3.50,<3.51; sys_platform == 'linux'",
 ]
 
 [dependency-groups]
