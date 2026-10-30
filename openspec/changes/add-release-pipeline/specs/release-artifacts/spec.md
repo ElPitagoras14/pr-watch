@@ -6,11 +6,11 @@ Define qué entrega una publicación: los dos ejecutables, el tag que los ata a 
 
 ### Requirement: Un binario por plataforma en cada release
 
-Cada release SHALL adjuntar exactamente dos ejecutables, construidos a partir del mismo commit: `pr-watch.exe` para Windows de 64 bits y `pr-watch` para Linux x86-64. Los nombres de descarga SHALL ser esos, los mismos que nombra el README, para que las instrucciones de instalación sigan siendo ciertas.
+Cada release SHALL adjuntar exactamente dos ejecutables, construidos a partir del mismo commit: `pr-watch-<versión>-windows.exe` para Windows de 64 bits y `pr-watch-<versión>-linux` para Linux x86-64, donde `<versión>` es la versión publicada (por ejemplo `pr-watch-0.1.2-windows.exe`). Los nombres de descarga SHALL llevar la versión, de modo que el archivo descargado diga cuál es sin abrirlo, y SHALL coincidir con los que nombra el README, para que las instrucciones de instalación sigan siendo ciertas.
 
 #### Scenario: Descarga desde el README
 - **WHEN** un usuario sigue las instrucciones de instalación y entra al último release
-- **THEN** encuentra `pr-watch.exe` y `pr-watch` como archivos descargables
+- **THEN** encuentra `pr-watch-<versión>-windows.exe` y `pr-watch-<versión>-linux` como archivos descargables
 
 #### Scenario: Los dos binarios son del mismo commit
 - **WHEN** se publica una versión
@@ -29,7 +29,7 @@ Cada ejecutable SHALL construirse con la orden de construcción que ya existe en
 El ejecutable de Windows SHALL llevar embebidos el icono y el recurso de versión correspondientes a la versión que se publica, y el panel de la aplicación SHALL mostrar esa misma versión.
 
 #### Scenario: Propiedades del ejecutable de Windows
-- **WHEN** el usuario abre las propiedades de `pr-watch.exe` descargado de un release
+- **WHEN** el usuario abre las propiedades de `pr-watch-<versión>-windows.exe` descargado de un release
 - **THEN** la versión de archivo y de producto coinciden con la versión del release
 
 ### Requirement: Tag anotado por versión

@@ -7,7 +7,7 @@ Hoy los ejecutables se construyen a mano (`uv run build.py`) en cada plataforma 
 - Se añade un workflow de GitHub Actions, `release`, que se dispara en cada push a `main` y encadena cuatro etapas: **check-version → build → tag → release**.
 - **check-version** lee la versión del proyecto y decide si hay algo que publicar: si el tag `v<versión>` ya existe en el repositorio, el pipeline termina en verde sin construir ni publicar. Publicar una versión pasa a ser, simplemente, subir a `main` un commit que sube la versión.
 - Antes de construir corre una **puerta de verificación** con las mismas órdenes que ya documenta el README: `unittest`, `ruff check` y `pyright`. Si falla, no se construye ni se publica nada.
-- **build** produce los dos ejecutables en paralelo: `pr-watch.exe` en un runner de Windows y `pr-watch` en `ubuntu-24.04`, en ambos casos con la orden de construcción que ya existe (`uv run build.py`), sin duplicar su lógica en YAML.
+- **build** produce los dos ejecutables en paralelo: `pr-watch.exe` en un runner de Windows y `pr-watch` en `ubuntu-24.04`, en ambos casos con la orden de construcción que ya existe (`uv run build.py`), sin duplicar su lógica en YAML. Antes de subirlos, el workflow los renombra a `pr-watch-<versión>-windows.exe` y `pr-watch-<versión>-linux`.
 - **tag** crea y empuja el tag anotado `v<versión>` sobre el commit construido, solo después de que los dos binarios existen.
 - **release** publica un GitHub Release sobre ese tag con los dos binarios adjuntos y notas generadas a partir de los commits desde el tag anterior.
 - El pipeline es **idempotente**: relanzarlo sobre un commit ya publicado no crea un tag duplicado ni un segundo release.

@@ -21,14 +21,14 @@
 
 ## 4. Jobs de construcción
 
-- [x] 4.1 Implementar `build-windows` en `windows-latest`, dependiente de `verify`: sincronizar, `uv run build.py`, comprobar que existe `dist/pr-watch.exe` y subirlo como artefacto de la ejecución
-- [x] 4.2 Implementar `build-linux` en `ubuntu-24.04`, dependiente de `verify`: instalar los paquetes `apt` confirmados en la tarea 1, sincronizar, correr las pruebas, `uv run build.py`, comprobar que existe `dist/pr-watch` y subirlo como artefacto
+- [x] 4.1 Implementar `build-windows` en `windows-latest`, dependiente de `verify`: sincronizar, `uv run build.py`, comprobar que existe `dist/pr-watch.exe`, renombrarlo a `pr-watch-<versión>-windows.exe` y subirlo como artefacto de la ejecución
+- [x] 4.2 Implementar `build-linux` en `ubuntu-24.04`, dependiente de `verify`: instalar los paquetes `apt` confirmados en la tarea 1, sincronizar, correr las pruebas, `uv run build.py`, comprobar que existe `dist/pr-watch`, renombrarlo a `pr-watch-<versión>-linux` y subirlo como artefacto
 - [x] 4.3 Comprobar en una ejecución real que los dos jobs corren en paralelo y que los dos artefactos quedan disponibles para los jobs siguientes
 
 ## 5. Etiquetado y publicación
 
 - [x] 5.1 Implementar el job `tag`, dependiente de los dos jobs de construcción y con permiso de escritura sobre el contenido: configurar la identidad del bot de Actions, crear el tag anotado `v<versión>` sobre el commit de la ejecución y empujarlo sin forzar
-- [x] 5.2 Implementar el job `release`, dependiente de `tag`: descargar los dos artefactos y crear el release con `gh release create` sobre el tag, titulado con la versión y con los dos binarios adjuntos con los nombres `pr-watch.exe` y `pr-watch`
+- [x] 5.2 Implementar el job `release`, dependiente de `tag`: descargar los dos artefactos y crear el release con `gh release create` sobre el tag, titulado con la versión y con los dos binarios adjuntos con los nombres `pr-watch-<versión>-windows.exe` y `pr-watch-<versión>-linux`
 - [x] 5.3 Generar las notas desde el historial y anteponer el cuerpo fijo que indica la distribución de construcción del binario de Linux y los paquetes del sistema que necesita; confirmar cómo combina `gh` ambas partes y, si no las concatena, armar el cuerpo completo y pasarlo como archivo de notas
 
 ## 6. Verificación de extremo a extremo
@@ -36,9 +36,9 @@
 - [ ] 6.1 Comprobar el camino de no publicación: un push a `main` que no cambia la versión termina en verde tras `check-version`, sin construir ni etiquetar
 - [x] 6.2 Comprobar el camino de publicación con la versión `0.1.0`: el pipeline construye, etiqueta `v0.1.0` y publica el release con los dos binarios
 - [x] 6.3 Comprobar la idempotencia: relanzar la ejecución ya publicada termina en verde sin tocar el tag ni crear un segundo release
-- [ ] 6.4 Descargar `pr-watch.exe` del release y comprobar que sus propiedades declaran la versión publicada y que arranca en la bandeja
+- [ ] 6.4 Descargar `pr-watch-<versión>-windows.exe` del release y comprobar que sus propiedades declaran la versión publicada y que arranca en la bandeja
   - Sobre el `.exe` descargado de `v0.1.1`: `FileVersion` y `ProductVersion` dicen `0.1.1`, y al ejecutarlo arranca y registra `pr-watch 0.1.1 arrancando`. No se llegó a ver el icono porque el usuario ya tenía una instancia en marcha y el ejecutable hizo lo correcto: pedirle que mostrara su panel y salir. Esa última comprobación es del escritorio del usuario.
-- [x] 6.5 Descargar `pr-watch` del release, darle permiso de ejecución en un Linux con las bibliotecas documentadas y comprobar que arranca en la bandeja
+- [x] 6.5 Descargar `pr-watch-<versión>-linux` del release, darle permiso de ejecución en un Linux con las bibliotecas documentadas y comprobar que arranca en la bandeja
   - Verificado sobre el binario descargado de `v0.1.1` en `ubuntu:24.04` con las bibliotecas documentadas, `xvfb` y bus de sesión: arranca, registra `pr-watch 0.1.1 arrancando`, crea el icono y sigue vivo al expirar el plazo de la prueba.
   - El binario de `v0.1.0` **no arrancaba**, por un defecto de `build.py` anterior a este cambio: no llevaba los submódulos de `gi.overrides`, que se cargan dinámicamente y el análisis estático de PyInstaller no ve, así que `GObject.idle_add` no existía y `pystray` fallaba al crear el icono. Con el arreglo (`--collect-submodules gi.overrides`), el binario arranca, crea el icono y sigue vivo. Verificado en `ubuntu:24.04` con las bibliotecas documentadas, `xvfb` y bus de sesión.
   - Queda abierto, **ajeno a este cambio**: en Linux el panel repite `WebKitJavascriptError: SyntaxError: Unexpected EOF`. No es empaquetado —los archivos de `pr_watch/ui` dentro del binario son idénticos a los de la fuente— y la aplicación sigue funcionando. Merece un change propio.
