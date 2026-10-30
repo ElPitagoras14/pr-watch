@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import ctypes
+import enum
 import getpass
 import logging
 import os
@@ -20,7 +21,33 @@ _log = logging.getLogger(__name__)
 
 _MUTEX_NAME = "Local\\pr-watch"
 _ERROR_ALREADY_EXISTS = 183
+_ERROR_ACCESS_DENIED = 5
 _SHOW = "show"
+
+
+class AcquireResult(enum.Enum):
+    """Resultado de `Guard.acquire()`, distinguiendo los dos tipos de fallo."""
+
+    ACQUIRED = "acquired"
+    # Ya hay una instancia corriendo (incluye el mutex creado por un proceso
+    # con otro contexto de seguridad, p.ej. uno elevado: CreateMutexW devuelve
+    # un handle nulo y GetLastError() == ERROR_ACCESS_DENIED).
+    ALREADY_RUNNING = "already_running"
+    # No se pudo ni comprobar si habia otra instancia. Mejor no arrancar sin
+    # garantia de unicidad que arriesgarse a correr dos instancias sin
+    # saberlo (fallar cerrado).
+    FAILED = "failed"
+
+
+def _classify_mutex_result(handle: int | None, last_error: int) -> AcquireResult:
+    """Logica pura de interpretar CreateMutexW, separada del FFI para poder probarla."""
+    if handle:
+        if last_error == _ERROR_ALREADY_EXISTS:
+            return AcquireResult.ALREADY_RUNNING
+        return AcquireResult.ACQUIRED
+    if last_error == _ERROR_ACCESS_DENIED:
+        return AcquireResult.ALREADY_RUNNING
+    return AcquireResult.FAILED
 
 
 def _address(config_dir: Path) -> str:
@@ -55,16 +82,28 @@ class Guard:
         self._handle: Any = None
         self._listener: Listener | None = None
 
-    def acquire(self) -> bool:
-        """True si somos la primera instancia."""
+    def acquire(self) -> AcquireResult:
+        """ACQUIRED si somos la primera instancia; ver AcquireResult para los demas casos."""
         if sys.platform == "win32":
-            kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+            # use_last_error=True guarda el codigo de error en un threadlocal
+            # privado de ctypes que ctypes.get_last_error() lee sin hacer una
+            # llamada FFI aparte. Con `ctypes.windll.kernel32` normal, entre
+            # CreateMutexW y una llamada posterior a GetLastError() ctypes
+            # puede ejecutar codigo (marshalling, el propio dispatch de la
+            # llamada) que pise el codigo de error real antes de leerlo.
+            kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
             kernel32.CreateMutexW.restype = ctypes.c_void_p
             handle = kernel32.CreateMutexW(None, False, _MUTEX_NAME)
-            if kernel32.GetLastError() == _ERROR_ALREADY_EXISTS:
-                return False
-            self._handle = handle
-            return True
+            last_error = ctypes.get_last_error()
+            result = _classify_mutex_result(handle, last_error)
+            if result is AcquireResult.ACQUIRED:
+                self._handle = handle
+            elif result is AcquireResult.FAILED:
+                _log.error(
+                    "No se pudo crear el mutex de instancia unica (codigo de error %s)",
+                    last_error,
+                )
+            return result
         import fcntl
 
         self.config_dir.mkdir(parents=True, exist_ok=True)
@@ -73,9 +112,9 @@ class Guard:
             fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError:
             f.close()
-            return False
+            return AcquireResult.ALREADY_RUNNING
         self._handle = f
-        return True
+        return AcquireResult.ACQUIRED
 
     def serve(self, on_show: Callable[[], None]) -> None:
         """Escucha a las instancias siguientes en un hilo propio."""
@@ -115,3 +154,22 @@ def ask_first_to_show(config_dir: Path) -> bool:
     except Exception as e:
         _log.warning("No se pudo avisar a la instancia en marcha: %s", type(e).__name__)
         return False
+
+
+_MB_ICONWARNING = 0x30
+_MB_OK = 0x0
+
+
+def notify_user(message: str, title: str = "pr-watch") -> None:
+    """Avisa al usuario de un fallo fuera del log.
+
+    En un build --windowed (asi se empaqueta en Windows) stderr no va a
+    ningun lado, asi que ahi hace falta un dialogo nativo de verdad. En otras
+    plataformas no hay ese problema: basta con lo que ya exista (log/stderr).
+    """
+    if sys.platform == "win32":
+        user32 = ctypes.windll.user32  # type: ignore[attr-defined]
+        user32.MessageBoxW(None, message, title, _MB_ICONWARNING | _MB_OK)
+        return
+    _log.error("%s", message)
+    print(message, file=sys.stderr)

@@ -7,7 +7,7 @@ import os
 import sys
 
 from pr_watch import __version__, config, log, platform_check
-from pr_watch.single_instance import Guard, ask_first_to_show
+from pr_watch.single_instance import AcquireResult, Guard, ask_first_to_show, notify_user
 
 _log = logging.getLogger("pr_watch")
 
@@ -23,9 +23,23 @@ def main() -> int:
         return 1
 
     guard = Guard(config_dir)
-    if not guard.acquire():
+    result = guard.acquire()
+    if result is AcquireResult.FAILED:
+        _log.error("No se pudo comprobar si ya hay otra instancia en marcha; no arrancamos")
+        notify_user(
+            "pr-watch no pudo comprobar si ya esta en marcha y no arrancara, "
+            "para evitar correr dos instancias a la vez sin saberlo. "
+            "Revisa el registro o reinicia sesion si el problema persiste."
+        )
+        return 1
+    if result is AcquireResult.ALREADY_RUNNING:
         _log.info("Ya hay una instancia: se le pide que muestre su panel")
-        ask_first_to_show(config_dir)
+        if not ask_first_to_show(config_dir):
+            _log.warning("No se pudo avisar a la instancia en marcha")
+            notify_user(
+                "pr-watch ya esta en marcha pero no responde. "
+                "Cierra el proceso manualmente si el problema persiste."
+            )
         return 0
 
     from pr_watch.app import App
