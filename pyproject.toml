@@ -41,7 +41,7 @@ ignore = ["SIM105", "E501"]
 [tool.pyright]
 pythonVersion = "3.13"
 typeCheckingMode = "strict"
-include = ["pr_watch", "tests", "build.py"]
+include = ["pr_watch", "tests", "build.py", "scripts"]
 reportMissingTypeStubs = false
 reportUnknownMemberType = false
 reportUnknownVariableType = false
