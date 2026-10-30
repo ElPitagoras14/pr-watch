@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 import threading
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -40,6 +41,11 @@ if sys.platform == "win32":
         attached = bool(theirs and theirs != mine and user32.AttachThreadInput(mine, theirs, True))
         try:
             win32.SetForegroundWindow(hwnd)
+            # El cambio es asincrono: si el menu se abre antes de que `hwnd`
+            # sea la ventana activa, se dibuja pero no resalta.
+            deadline = time.monotonic() + 0.5
+            while user32.GetForegroundWindow() != hwnd and time.monotonic() < deadline:
+                time.sleep(0.01)
         finally:
             if attached:
                 user32.AttachThreadInput(mine, theirs, False)
