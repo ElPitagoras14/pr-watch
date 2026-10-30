@@ -61,7 +61,7 @@ Para no dejar a Linux sin cobertura, el job de construcción de Linux ejecuta la
 
 ### 4. Dos jobs de construcción en paralelo, artefactos subidos entre jobs
 
-`build-windows` (`windows-latest`) y `build-linux` (`ubuntu-24.04`) corren a la vez tras `verify`. Cada uno sincroniza dependencias, ejecuta `uv run build.py` y sube `dist/pr-watch.exe` o `dist/pr-watch` como artefacto de la ejecución. El job `release` los recupera de ahí.
+`build-windows` (`windows-latest`) y `build-linux` (`ubuntu-24.04`) corren a la vez tras `verify`. Cada uno sincroniza dependencias, ejecuta `uv run build.py` y renombra `dist/pr-watch.exe` o `dist/pr-watch` a `pr-watch-<versión>-windows.exe` o `pr-watch-<versión>-linux` (la versión sale del output de `check-version`; `build.py` no cambia) y sube el archivo renombrado como artefacto de la ejecución. El job `release` los recupera de ahí.
 
 El runner de Linux se fija en `ubuntu-24.04` y no en `ubuntu-latest`: la etiqueta móvil cambiaría el piso de glibc del binario oficial sin que nadie lo decida.
 

@@ -77,16 +77,19 @@ jobs:
       - name: Construir el ejecutable
         run: uv run build.py
 
-      - name: Comprobar que existe
+      - name: Comprobar que existe y ponerle la version al nombre
         shell: pwsh
+        env:
+          VERSION: ${{ needs.check-version.outputs.version }}
         run: |
           if (-not (Test-Path dist/pr-watch.exe)) { throw "no se genero dist/pr-watch.exe" }
-          Get-Item dist/pr-watch.exe | Select-Object Name, Length
+          Move-Item dist/pr-watch.exe "dist/pr-watch-$env:VERSION-windows.exe"
+          Get-Item "dist/pr-watch-$env:VERSION-windows.exe" | Select-Object Name, Length
 
       - uses: actions/upload-artifact@v7
         with:
           name: pr-watch-windows
-          path: dist/pr-watch.exe
+          path: dist/pr-watch-${{ needs.check-version.outputs.version }}-windows.exe
           if-no-files-found: error
           retention-days: 7
 
@@ -127,15 +130,18 @@ jobs:
       - name: Construir el ejecutable
         run: uv run build.py
 
-      - name: Comprobar que existe
+      - name: Comprobar que existe y ponerle la version al nombre
+        env:
+          VERSION: ${{ needs.check-version.outputs.version }}
         run: |
           test -x dist/pr-watch || { echo "no se genero dist/pr-watch"; exit 1; }
-          ls -la dist/pr-watch
+          mv dist/pr-watch "dist/pr-watch-$VERSION-linux"
+          ls -la "dist/pr-watch-$VERSION-linux"
 
       - uses: actions/upload-artifact@v7
         with:
           name: pr-watch-linux
-          path: dist/pr-watch
+          path: dist/pr-watch-${{ needs.check-version.outputs.version }}-linux
           if-no-files-found: error
           retention-days: 7
 
@@ -195,9 +201,9 @@ jobs:
 
           ---
 
-          **Windows**: descarga `pr-watch.exe` y ejecutalo. Es portable: no hay instalador ni hace falta Python.
+          **Windows**: descarga `pr-watch-<version>-windows.exe` y ejecutalo. Es portable: no hay instalador ni hace falta Python.
 
-          **Linux**: descarga `pr-watch`, dale permiso de ejecucion (`chmod +x pr-watch`) y ejecutalo. Se construye en Ubuntu 24.04 y lleva dentro su propio glib, asi que del sistema necesita glibc 2.38 o mas nueva (Ubuntu 23.10+, Debian 13+, Fedora 39+), mas GTK, WebKit y el indicador de bandeja:
+          **Linux**: descarga `pr-watch-<version>-linux`, dale permiso de ejecucion (`chmod +x pr-watch-<version>-linux`) y ejecutalo. Se construye en Ubuntu 24.04 y lleva dentro su propio glib, asi que del sistema necesita glibc 2.38 o mas nueva (Ubuntu 23.10+, Debian 13+, Fedora 39+), mas GTK, WebKit y el indicador de bandeja:
 
           ```
           sudo apt install gir1.2-gtk-3.0 gir1.2-webkit2-4.1 gir1.2-ayatanaappindicator3-0.1

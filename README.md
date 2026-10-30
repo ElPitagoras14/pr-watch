@@ -48,11 +48,11 @@ Los dos ejecutables están en el [último release](https://github.com/ElPitagora
 
 ### Windows
 
-Descarga [`pr-watch.exe`](https://github.com/ElPitagoras14/pr-watch/releases/latest) y ejecútalo. Es un único archivo portable: no hay instalador ni hace falta Python.
+Descarga [`pr-watch-<versión>-windows.exe`](https://github.com/ElPitagoras14/pr-watch/releases/latest) y ejecútalo. Es un único archivo portable: no hay instalador ni hace falta Python.
 
 ### Linux
 
-Descarga [`pr-watch`](https://github.com/ElPitagoras14/pr-watch/releases/latest), dale permiso de ejecución (`chmod +x pr-watch`) y ejecútalo. El binario oficial se construye en Ubuntu 24.04 y lleva dentro Python, sus dependencias y su propio glib, así que del sistema necesita **glibc 2.38 o más nueva** (Ubuntu 23.10+, Debian 13+, Fedora 39+) más GTK, WebKit y el indicador de bandeja. En una distribución más antigua hay que construirlo allí. En Debian/Ubuntu:
+Descarga [`pr-watch-<versión>-linux`](https://github.com/ElPitagoras14/pr-watch/releases/latest), dale permiso de ejecución (`chmod +x pr-watch-<versión>-linux`) y ejecútalo. El binario oficial se construye en Ubuntu 24.04 y lleva dentro Python, sus dependencias y su propio glib, así que del sistema necesita **glibc 2.38 o más nueva** (Ubuntu 23.10+, Debian 13+, Fedora 39+) más GTK, WebKit y el indicador de bandeja. En una distribución más antigua hay que construirlo allí. En Debian/Ubuntu:
 
 ```
 sudo apt install gir1.2-gtk-3.0 gir1.2-webkit2-4.1 gir1.2-ayatanaappindicator3-0.1
@@ -156,11 +156,11 @@ Publicar es **subir la versión y fusionar a `main`**. No hay que crear tags ni 
 1. Sube la versión en los dos sitios donde vive, `pyproject.toml` y `pr_watch/__init__.py`. `tests/test_version.py` falla si divergen, y `python scripts/release_version.py` imprime la versión o dice qué está mal.
 2. Fusiona a `main`.
 
-A partir de ahí, el workflow `release` encadena cuatro etapas: **check-version → build → tag → release**. `check-version` compara la versión con los tags existentes; si el tag `v<versión>` ya existe, el pipeline termina en verde sin hacer nada, así que los pushes que no suben la versión no cuestan casi nada. Si no existe, corre las pruebas, el estilo y los tipos; construye `pr-watch.exe` en Windows y `pr-watch` en Ubuntu 24.04; crea el tag anotado `v<versión>`; y publica el release con los dos binarios adjuntos.
+A partir de ahí, el workflow `release` encadena cuatro etapas: **check-version → build → tag → release**. `check-version` compara la versión con los tags existentes; si el tag `v<versión>` ya existe, el pipeline termina en verde sin hacer nada, así que los pushes que no suben la versión no cuestan casi nada. Si no existe, corre las pruebas, el estilo y los tipos; construye el binario de Windows y el de Ubuntu 24.04 (los renombra a `pr-watch-<versión>-windows.exe` y `pr-watch-<versión>-linux`); crea el tag anotado `v<versión>`; y publica el release con los dos binarios adjuntos.
 
 Nada se publica desde un commit que no pasa la verificación, y el tag no se crea hasta que los dos binarios existen.
 
-**Si una ejecución deja el tag creado pero sin release** —falla el último paso—, relanzarla no sirve: `check-version` verá el tag y dirá que no hay nada que publicar. Hay dos salidas: borrar el tag (`git push origin :refs/tags/vX.Y.Z`) y volver a lanzar, o crear el release a mano desde los artefactos de esa ejecución con `gh release create vX.Y.Z pr-watch.exe pr-watch`.
+**Si una ejecución deja el tag creado pero sin release** —falla el último paso—, relanzarla no sirve: `check-version` verá el tag y dirá que no hay nada que publicar. Hay dos salidas: borrar el tag (`git push origin :refs/tags/vX.Y.Z`) y volver a lanzar, o crear el release a mano desde los artefactos de esa ejecución con `gh release create vX.Y.Z pr-watch-X.Y.Z-windows.exe pr-watch-X.Y.Z-linux`.
 
 ### Otros proveedores
 
