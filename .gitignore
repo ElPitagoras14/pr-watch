@@ -7,3 +7,5 @@ dist/
 .env
 .codegraph/
 pr_watch/ui/preview/scenarios.json
+# Skillshare (registro local de copias)
+.claude/skills/.skillshare-manifest.json
